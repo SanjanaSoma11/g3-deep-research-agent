@@ -15,7 +15,7 @@
  *   5. Prints PASS or FAIL with a reason for each assertion.
  *
  * Requirements:
- *   - Ollama must be running locally with OLLAMA_MODEL available.
+ *   - GROQ_API_KEY must be set in the environment (or .env).
  *   - TAVILY_API_KEY must be set in the environment (or .env).
  *   - No test framework required — plain assertions only.
  *

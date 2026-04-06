@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: g3-deep-research-agent
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node src/pipeline.js
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: GROQ_API_KEY
+        sync: false
+      - key: LLM_MODEL
+        sync: false
+      - key: TAVILY_API_KEY
+        sync: false

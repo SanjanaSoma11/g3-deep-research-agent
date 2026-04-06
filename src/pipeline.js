@@ -1,5 +1,26 @@
 'use strict';
 
+// Load .env file if present (no external dependency — manual parser)
+// Must run before any module that reads env vars (llmClient, tavilyClient, etc.)
+(function loadDotEnv() {
+  const fs = require('fs');
+  const path = require('path');
+  const envPath = path.resolve(process.cwd(), '.env');
+  if (!fs.existsSync(envPath)) return;
+  const lines = fs.readFileSync(envPath, 'utf8').split('\n');
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const eqIdx = trimmed.indexOf('=');
+    if (eqIdx < 0) continue;
+    const key = trimmed.substring(0, eqIdx).trim();
+    const val = trimmed.substring(eqIdx + 1).trim().replace(/^['"]|['"]$/g, '');
+    if (key && !process.env[key]) {
+      process.env[key] = val;
+    }
+  }
+})();
+
 /**
  * pipeline.js
  *
@@ -28,7 +49,7 @@
  *
  * Security (SECURITY.md):
  *   - Query validated: max 1,000 chars, non-empty, stripped, no control chars.
- *   - Only allowed outbound domains: api.tavily.com, OLLAMA_BASE_URL host.
+ *   - Only allowed outbound domains: api.tavily.com, api.groq.com.
  *   - Never exec/eval any external string.
  *   - All external calls in try/catch with explicit error logging.
  */
@@ -38,7 +59,7 @@ const fs = require('fs');
 const path = require('path');
 const { scoreKeywordOverlap } = require('./keywordScorer');
 const { runChunker } = require('./chunker');
-const { ollamaGenerate } = require('./ollamaClient');
+const { llmGenerate, getModelName } = require('./llmClient');
 const { tavilySearch } = require('./tavilyClient');
 const { readMemory, writeMemory } = require('./memoryBuffer');
 const { runTokenBudgetGate } = require('./tokenBudgetGate');
@@ -49,7 +70,6 @@ const { buildSummariserPrompt } = require('./prompts/summariser');
 const { buildSynthesiserPrompt } = require('./prompts/synthesiser');
 
 const PORT = parseInt(process.env.PORT || '3000', 10);
-const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'mistral';
 const CHUNKS_INDEX_PATH = path.resolve('./chunks_index.json');
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -189,7 +209,7 @@ async function runPipeline(rawQuery) {
   let subQuestions = [];
   try {
     const decomposerPrompt = buildDecomposerPrompt(query);
-    const decomposerRaw = await ollamaGenerate(OLLAMA_MODEL, decomposerPrompt, 256);
+    const decomposerRaw = await llmGenerate(decomposerPrompt, 256);
 
     try {
       const parsed = parseLLMJson(decomposerRaw);
@@ -289,7 +309,7 @@ async function runPipeline(rawQuery) {
     // 4f. Research LLM call
     let answer = '';
     try {
-      answer = await ollamaGenerate(OLLAMA_MODEL, assembledPrompt, 512);
+      answer = await llmGenerate(assembledPrompt, 512);
     } catch (err) {
       console.error(`[pipeline] Research LLM call failed: ${err.message}`);
       answer = `[Error: LLM call failed — ${err.message}]`;
@@ -306,7 +326,7 @@ async function runPipeline(rawQuery) {
     let summaryObj = null;
     try {
       const summariserPrompt = buildSummariserPrompt(subQuestion, answer);
-      const summariserRaw = await ollamaGenerate(OLLAMA_MODEL, summariserPrompt, 256);
+      const summariserRaw = await llmGenerate(summariserPrompt, 256);
       try {
         summaryObj = parseLLMJson(summariserRaw);
         if (typeof summaryObj !== 'object' || summaryObj === null) throw new Error('Not an object.');
@@ -354,7 +374,7 @@ async function runPipeline(rawQuery) {
   } else {
     try {
       const synthesiserPrompt = buildSynthesiserPrompt(subQuestionAnswers);
-      finalAnswer = await ollamaGenerate(OLLAMA_MODEL, synthesiserPrompt, 512);
+      finalAnswer = await llmGenerate(synthesiserPrompt, 512);
     } catch (err) {
       console.error(`[pipeline] Synthesiser LLM call failed: ${err.message}`);
       // Fallback: concatenate sub-answers
@@ -368,7 +388,7 @@ async function runPipeline(rawQuery) {
   let runId;
   try {
     runId = writeEvidenceLog({
-      model_used: OLLAMA_MODEL,
+      model_used: getModelName(),
       original_query: query,
       sub_questions: subQuestions,
       final_answer: finalAnswer,
@@ -391,12 +411,102 @@ async function runPipeline(rawQuery) {
 // HTTP server (POST /query)
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Static file serving (whitelist only — no directory listing, no path traversal)
+// SECURITY.md: never serve any file outside public/
+// ─────────────────────────────────────────────────────────────────────────────
+
+const PUBLIC_DIR = path.resolve(__dirname, '..', 'public');
+const OUTPUT_LOG_PATH = path.resolve(process.env.OUTPUT_LOG_PATH || './output_log.json');
+
+/** Allowed static file routes → { filename, contentType } */
+const STATIC_ROUTES = {
+  '/':          { filename: 'index.html',  contentType: 'text/html; charset=utf-8' },
+  '/style.css': { filename: 'style.css',   contentType: 'text/css; charset=utf-8' },
+  '/app.js':    { filename: 'app.js',      contentType: 'application/javascript; charset=utf-8' }
+};
+
+/**
+ * Serve a whitelisted static file from the public/ directory.
+ * Validates resolved path stays inside PUBLIC_DIR (no path traversal).
+ */
+function serveStaticFile(res, filename, contentType) {
+  const filePath = path.join(PUBLIC_DIR, filename);
+  // Path traversal guard: resolved path must start with PUBLIC_DIR
+  if (!filePath.startsWith(PUBLIC_DIR + path.sep) && filePath !== PUBLIC_DIR) {
+    res.writeHead(403, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Forbidden.' }));
+    return;
+  }
+  try {
+    const content = fs.readFileSync(filePath);
+    res.writeHead(200, { 'Content-Type': contentType });
+    res.end(content);
+  } catch (err) {
+    res.writeHead(404, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: `File not found: ${filename}` }));
+  }
+}
+
+/**
+ * Serve GET /api/runs — return output_log.json as JSON (read-only).
+ */
+function serveApiRuns(res) {
+  try {
+    if (!fs.existsSync(OUTPUT_LOG_PATH)) {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end('[]');
+      return;
+    }
+    const raw = fs.readFileSync(OUTPUT_LOG_PATH, 'utf8');
+    // Validate it parses — return empty array on corrupt file
+    let parsed;
+    try {
+      parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed)) parsed = [];
+    } catch {
+      parsed = [];
+    }
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify(parsed));
+  } catch (err) {
+    console.error(`[pipeline] /api/runs error: ${err.message}`);
+    res.writeHead(500, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'Failed to read output log.' }));
+  }
+}
+
+/**
+ * Serve GET /api/health — basic liveness check for the frontend.
+ */
+function serveApiHealth(res) {
+  res.writeHead(200, { 'Content-Type': 'application/json' });
+  res.end(JSON.stringify({ status: 'ok', model: getModelName() }));
+}
+
 function startHttpServer() {
   const server = http.createServer(async (req, res) => {
-    // Only handle POST /query
+    // ── Static files (GET only, explicit whitelist) ──
+    if (req.method === 'GET') {
+      if (req.url in STATIC_ROUTES) {
+        const { filename, contentType } = STATIC_ROUTES[req.url];
+        serveStaticFile(res, filename, contentType);
+        return;
+      }
+      if (req.url === '/api/runs') {
+        serveApiRuns(res);
+        return;
+      }
+      if (req.url === '/api/health') {
+        serveApiHealth(res);
+        return;
+      }
+    }
+
+    // ── POST /query ──
     if (req.method !== 'POST' || req.url !== '/query') {
       res.writeHead(404, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Not found. Use POST /query.' }));
+      res.end(JSON.stringify({ error: 'Not found. Use POST /query or open / in your browser.' }));
       return;
     }
 
@@ -423,7 +533,7 @@ function startHttpServer() {
         // Log failed run to output_log.json
         try {
           writeEvidenceLog({
-            model_used: OLLAMA_MODEL,
+            model_used: getModelName(),
             original_query: typeof queryInput === 'string' ? queryInput : '',
             sub_questions: [],
             final_answer: '',
@@ -471,7 +581,7 @@ async function main() {
       // Log failed run
       try {
         writeEvidenceLog({
-          model_used: OLLAMA_MODEL,
+          model_used: getModelName(),
           original_query: cliQuery,
           sub_questions: [],
           final_answer: '',

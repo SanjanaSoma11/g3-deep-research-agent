@@ -38,14 +38,19 @@ Build a shared utility function for token counting. Use the formula: `token_coun
 ### Step 4 — Keyword scorer utility
 Build a shared utility function for BM25-style keyword overlap scoring. Input: a query string and a candidate text string. Output: a float score between 0 and 1. Implementation: extract non-stopword tokens from both strings, compute overlap ratio (intersection size / union size). This is used for both document chunk retrieval and episodic memory retrieval.
 
-### Step 5 — Ollama client
-Build a thin HTTP client for Ollama. It must:
-- POST to the Ollama endpoint URL loaded from the environment variable `OLLAMA_BASE_URL` (default: `http://localhost:11434`)
-- Accept: model name, prompt string, max_tokens integer
-- Return: response text string
-- Throw a typed error if the response status is not 200
+### Step 5 — LLM client (Groq)
+Build a thin HTTP client for Groq (`src/llmClient.js`). It must:
+- POST to `https://api.groq.com/openai/v1/chat/completions` using the OpenAI Chat Completions request format
+- Load the API key from environment variable `GROQ_API_KEY` — throw immediately if not set
+- Load the model name from environment variable `LLM_MODEL` (default: `llama-3.3-70b-versatile`)
+- Accept: prompt string, max_tokens integer (model is internal — callers do not pass it)
+- Return: response text string (`data.choices[0].message.content`)
+- Throw a typed `LLMError` on non-200 response
 - Log the model name, prompt token count, and response token count on every call
+- Never log the API key, even partially
+- Set `temperature: 0.3` for deterministic research outputs
 - Respect the 2,000 token hard limit: if the prompt exceeds 2,000 tokens, throw an error with message "TOKEN_LIMIT_EXCEEDED" before sending — do not send the request
+- Export `llmGenerate(prompt, maxTokens)` and `getModelName()` so pipeline.js can log the model name
 
 ### Step 6 — Tavily client
 Build a thin HTTP client for Tavily. It must:
@@ -158,8 +163,8 @@ Write a smoke test script (`smoke_test.js` or `smoke_test.py`) that:
 
 | Variable | Description | Required |
 |---|---|---|
-| `OLLAMA_BASE_URL` | Base URL for Ollama API | Yes (default: http://localhost:11434) |
-| `OLLAMA_MODEL` | Model name to use | Yes (default: mistral) |
+| `GROQ_API_KEY` | Groq API key (https://console.groq.com) | Yes |
+| `LLM_MODEL` | Groq model name to use | No (default: llama-3.3-70b-versatile) |
 | `TAVILY_API_KEY` | Tavily search API key | Yes |
 | `DOCS_DIR` | Path to uploaded documents folder | No (default: ./docs) |
 | `MEMORY_BUFFER_PATH` | Path to memory buffer JSON | No (default: ./memory_buffer.json) |
@@ -169,7 +174,7 @@ Write a smoke test script (`smoke_test.js` or `smoke_test.py`) that:
 
 ## What NOT to Build
 
-- Do not build a web UI or frontend of any kind
+- Do not build a web UI or frontend of any kind (this rule is overridden by FRONTEND_INSTRUCTIONS.md for the frontend phase)
 - Do not build a database — all storage is flat JSON files
 - Do not build vector embeddings or a vector store — retrieval is keyword-based only
 - Do not build authentication or user management

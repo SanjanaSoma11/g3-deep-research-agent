@@ -13,11 +13,7 @@ The agent is permitted to make HTTP requests only to the following domains:
 | Domain | Purpose |
 |---|---|
 | `api.tavily.com` | Web search retrieval |
-| `localhost` (via `OLLAMA_BASE_URL`) | Ollama LLM inference (local) |
-| `127.0.0.1` (via `OLLAMA_BASE_URL`) | Ollama LLM inference (alternate local) |
-| Any ngrok tunnel URL set in `OLLAMA_BASE_URL` | Ollama exposed via ngrok for n8n cloud |
-
-**Note on the Node.js pipeline ngrok tunnel:** When n8n cloud is used as a scheduler, the Node.js pipeline itself must also be exposed via a separate ngrok tunnel (default port 3000) so n8n can POST queries to it. This tunnel URL is configured inside n8n's HTTP Request node only — it is not an outbound domain used by the Node.js pipeline itself. The pipeline never calls its own public URL. No code change is required; this is a network routing concern only.
+| `api.groq.com` | LLM inference (Groq free tier) |
 
 No other outbound HTTP requests are permitted anywhere in the Node.js codebase. Do not add analytics, telemetry, logging services, or external storage calls of any kind.
 
@@ -93,7 +89,7 @@ Uploaded document content and web search results are external, untrusted data. W
 ## Rate Limiting and Cost Controls
 
 - Tavily: maximum 3 calls per pipeline run (1 per sub-question, maximum 3 sub-questions). If the query decomposer returns more than 3 sub-questions, truncate to 3 before proceeding and log a warning.
-- Ollama: no hard rate limit (local), but log every call with token counts so usage is visible
+- Groq: no additional hard rate limit enforced in code (Groq free tier allows 30 req/min), but log every call with token counts so usage is visible
 - n8n cloud free tier: do not schedule the workflow at an interval shorter than 15 minutes. Manual trigger only is acceptable for demo purposes.
 
 ---
@@ -101,7 +97,7 @@ Uploaded document content and web search results are external, untrusted data. W
 ## Data Privacy
 
 - Do not log the full text of uploaded documents anywhere outside `chunks_index.json`
-- Do not send uploaded document content to any service other than the local Ollama instance
+- Do not send uploaded document content to any service other than the Groq API for LLM inference
 - Web search queries sent to Tavily contain only the sub-question text — never the full document content or memory buffer contents
 - The `output_log.json` file must not be committed to the public GitHub repository — add it to `.gitignore`
 - The `memory_buffer.json` file must not be committed to the public GitHub repository — add it to `.gitignore`

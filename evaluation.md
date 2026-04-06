@@ -54,18 +54,24 @@ The 1,600-token context budget may cause the agent to drop relevant context when
 
 ---
 
-## LLM Choice: Ollama (Local Open-Source) over Hosted APIs
+## LLM Choice: Groq (Hosted Free Tier) over Local Ollama
 
 ### Decision
-Ollama running a local open-source model (Mistral or Llama 3) was chosen over hosted API providers (OpenAI, Anthropic, Google).
+Groq's hosted API running Llama 3.3 70B was chosen over local Ollama (Mistral or Llama 3) and over paid hosted providers (OpenAI, Anthropic, Google).
 
 ### Reasoning
-Using a local model eliminates per-token API costs entirely, which is critical for a prototype that may run dozens of test queries during development. It also eliminates the risk of API rate limits interrupting development. The trade-off is that Ollama requires a machine with sufficient RAM (minimum 8GB for Mistral 7B) and must be running locally before the n8n workflow executes.
+Groq eliminates the single biggest setup friction of the original Ollama architecture: the requirement for a local machine with 8–16GB RAM and a running Ollama process. With Groq:
+- No local GPU or high-RAM machine is required — inference runs on Groq's infrastructure.
+- No ngrok tunnel is needed to expose the LLM to n8n cloud or remote hosting.
+- The free tier (30 req/min, 14,400 req/day) is more than sufficient for a demo prototype.
+- Llama 3.3 70B is significantly better than Mistral 7B for query decomposition and synthesis, producing more coherent sub-questions and final answers.
+- Groq's OpenAI-compatible API means the client module is a minimal rewrite — only `src/llmClient.js` changed, no other component required modification.
+- Sub-second to low-single-digit-second inference (vs. 30–120 seconds locally) makes the agent substantially more usable.
 
-For the demo runs required for submission, model quality is sufficient. The architecture is model-agnostic — swapping the Ollama client for an OpenAI or Anthropic client requires changing only the client module, not any other component.
+The architecture remains model-agnostic: swapping Groq for any OpenAI-compatible provider requires changing only the API endpoint and key in `src/llmClient.js`.
 
 ### Trade-off accepted
-Local model quality is lower than frontier models (GPT-4o, Claude Sonnet). Query decomposition and summarisation may be less accurate. For a business research demo with straightforward queries this is acceptable. A production deployment would use a frontier model.
+The prototype now depends on an external service (Groq) for availability. If Groq is down or rate-limits the key, the pipeline fails. For a demo prototype this is acceptable — the simplicity and quality gains far outweigh the availability risk. A production system would add a fallback provider (e.g., OpenAI) and implement retry with exponential backoff.
 
 ---
 
@@ -102,6 +108,6 @@ JSON file storage has no concurrent write safety. If two workflow runs execute s
 | Word-count token approximation (±10%) | Occasional over/undercount | Conservative 1.33 multiplier | Use model tokeniser |
 | Keyword retrieval (no semantics) | Missed synonyms | Focused query vocabulary | Vector embeddings |
 | No memory pruning | Buffer grows unbounded | Acceptable for demo scale | TTL-based pruning |
-| Ollama requires local tunnel for n8n cloud | Setup complexity | Documented in README | Host Ollama on VPS |
+| Groq free tier rate limits (30 req/min) | Batch runs may be throttled | Single-query demo use | Paid tier or fallback provider |
 | No concurrent write safety | File corruption risk | Single-user demo only | Database with transactions |
 | No document sanitisation beyond type/size | Prompt injection risk | Trusted user uploads only | Content sandboxing |

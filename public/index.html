@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>G3 Deep Research Agent</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header>
+    <h1>G3 Deep Research Agent</h1>
+    <p class="subtitle">Episodic memory · Web search · Document retrieval · 2,000-token context budget</p>
+  </header>
+
+  <main>
+    <!-- Warning banner: shown if backend is unreachable -->
+    <div id="backend-warning" class="banner banner-warning" hidden>
+      Backend not reachable. Make sure the server is running (<code>node src/pipeline.js</code>).
+    </div>
+
+    <!-- Query input section -->
+    <section class="query-section" aria-label="Research query">
+      <label for="query-input" class="label">Research query</label>
+      <textarea
+        id="query-input"
+        rows="4"
+        maxlength="1000"
+        placeholder="Ask a complex research question..."
+        aria-describedby="char-counter query-error"
+      ></textarea>
+      <div class="query-meta">
+        <span id="char-counter" class="char-counter">0 / 1,000</span>
+        <span id="query-error" class="field-error" role="alert" hidden></span>
+      </div>
+      <button id="submit-btn" type="button">Research</button>
+    </section>
+
+    <!-- Status section: shown while pipeline is running -->
+    <section id="status-section" class="status-section" hidden aria-live="polite">
+      <div class="spinner" aria-hidden="true"></div>
+      <p class="status-text">Researching&hellip; this usually takes 10&ndash;30 seconds</p>
+    </section>
+
+    <!-- Error section -->
+    <section id="error-section" class="error-section" hidden role="alert">
+      <p id="error-message" class="error-message"></p>
+    </section>
+
+    <!-- Result section: shown after a successful run -->
+    <section id="result-section" class="result-section" hidden>
+      <h2>Answer</h2>
+      <pre id="final-answer" class="final-answer"></pre>
+
+      <details class="metadata-panel">
+        <summary>Run details</summary>
+        <div class="metadata-body">
+          <div class="meta-row">
+            <span class="meta-label">Run ID</span>
+            <code id="meta-run-id" class="meta-value mono"></code>
+          </div>
+          <div class="meta-row">
+            <span class="meta-label">Sub-questions</span>
+            <ol id="meta-sub-questions" class="meta-list"></ol>
+          </div>
+          <div class="meta-row">
+            <span class="meta-label">Sources used</span>
+            <ul id="meta-sources" class="meta-list"></ul>
+          </div>
+          <div class="meta-row">
+            <span class="meta-label">Token usage</span>
+            <ul id="meta-tokens" class="meta-list mono"></ul>
+          </div>
+          <div class="meta-row">
+            <span class="meta-label">Context kept</span>
+            <ul id="meta-kept" class="meta-list mono"></ul>
+          </div>
+          <div class="meta-row">
+            <span class="meta-label">Context dropped</span>
+            <ul id="meta-dropped" class="meta-list mono"></ul>
+          </div>
+        </div>
+      </details>
+    </section>
+
+    <!-- Past runs section -->
+    <section class="past-runs-section" aria-label="Past runs">
+      <h2>Past runs</h2>
+      <p id="past-runs-empty" class="empty-state">No past runs yet. Submit a query above to get started.</p>
+      <ul id="past-runs-list" class="past-runs-list" hidden></ul>
+    </section>
+  </main>
+
+  <footer>
+    <p>Built for Binox 2026 G3 Assessment</p>
+  </footer>
+
+  <script src="/app.js"></script>
+</body>
+</html>

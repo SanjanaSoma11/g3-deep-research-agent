@@ -57,7 +57,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [520, 300],
-      "notes": "Posts the research query to the local Node.js pipeline exposed via ngrok tunnel. The PIPELINE_WEBHOOK_URL n8n variable should be set to the ngrok URL (e.g., https://xxxx.ngrok.io). No credentials are hardcoded here — the pipeline authenticates to Tavily and Ollama using its own environment variables."
+      "notes": "Posts the research query to the Node.js pipeline. The PIPELINE_WEBHOOK_URL n8n variable should be set to the pipeline's public URL (ngrok for local dev, Render URL for hosted deployment). No credentials are hardcoded here — the pipeline authenticates to Groq and Tavily using its own environment variables."
     },
     {
       "parameters": {
@@ -135,6 +135,6 @@
   "tags": [],
   "meta": {
     "instanceId": "g3-deep-research-agent",
-    "notes": "Import this workflow into n8n cloud free tier. Before use: set the n8n variable PIPELINE_WEBHOOK_URL to the ngrok tunnel URL exposing your local Node.js pipeline (default port 3000). The Tavily API key is managed by the Node.js pipeline via its own TAVILY_API_KEY env var — do not add it here. See README.md for full setup instructions."
+    "notes": "Import this workflow into n8n cloud free tier. Before use: set the n8n variable PIPELINE_WEBHOOK_URL to the URL of your deployed Node.js pipeline (e.g. ngrok tunnel for local dev, or your Render service URL for hosted deployment). The Groq and Tavily API keys are managed by the Node.js pipeline via its own GROQ_API_KEY and TAVILY_API_KEY env vars — do not add them here. See README.md for full setup instructions."
   }
 }

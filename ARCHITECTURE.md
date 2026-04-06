@@ -17,12 +17,12 @@ A deep research agent that answers complex, multi-part business research questio
 1. Decomposing the query into at most 3 sub-questions
 2. Retrieving context for each sub-question from two sources: Tavily web search and user-uploaded documents
 3. Ranking and compressing retrieved context to fit within a strict 2,000-token hard limit
-4. Answering each sub-question with a local Ollama LLM
+4. Answering each sub-question with the Groq API (Llama 3.3 70B)
 5. Writing structured summaries back to an episodic memory buffer
 6. Synthesising a final evidence-tracked answer
 
 **Orchestration**: Node.js (core pipeline) + n8n cloud free tier (trigger/scheduler only)
-**LLM inference**: Ollama running locally (open-source model — Mistral or Llama 3)
+**LLM inference**: Groq API (free tier — Llama 3.3 70B via OpenAI-compatible endpoint)
 **Web search**: Tavily API (free tier, research-optimised)
 **Document retrieval**: User-uploaded PDFs and text files, chunked and keyword-scored at startup
 **Memory backend**: Episodic buffer in flat JSON (`memory_buffer.json`)
@@ -38,8 +38,8 @@ The pipeline is the application. It exposes a simple HTTP endpoint (`POST /query
 ### 2. n8n Cloud (Trigger Only)
 One n8n workflow contains a single HTTP Request node that POSTs the query to the Node.js pipeline endpoint. n8n handles scheduling (Cron node) and provides a UI for manual triggering. No logic lives in n8n — it is a thin caller. The n8n workflow export (`n8n_workflow_export.json`) is provided for reproducibility but is optional for running the agent.
 
-### 3. Ollama (LLM)
-Ollama runs locally and exposes a REST API at the URL set in `OLLAMA_BASE_URL` (default: `http://localhost:11434`). Three prompt roles use Ollama: query decomposer, per-sub-question research call, and final synthesiser. The summariser also uses Ollama to compress answers before writing to the memory buffer. Recommended model: `mistral` (runs on 8GB RAM) or `llama3` (requires 16GB RAM).
+### 3. Groq (LLM)
+Groq is a hosted LLM inference provider with an OpenAI-compatible REST API (`https://api.groq.com/openai/v1/chat/completions`). Authentication is via `Authorization: Bearer` header using the key from `GROQ_API_KEY`. Three prompt roles use Groq: query decomposer, per-sub-question research call, and final synthesiser. The summariser also uses Groq to compress answers before writing to the memory buffer. Default model: `llama-3.3-70b-versatile` (set via `LLM_MODEL` env var). No local RAM requirements — inference runs entirely on Groq's infrastructure.
 
 ### 4. Tavily API (Web Search)
 Called once per sub-question. Returns top 3 results (title, URL, content snippet). Only the content snippet is used in context assembly. API key stored in environment variable `TAVILY_API_KEY` — never in source code.
@@ -86,7 +86,7 @@ Hard ceiling per LLM call:   2,000 tokens  (never exceeded under any circumstanc
 POST /query  (or: node src/pipeline.js "query")
   │
   ▼
-Query decomposer (Ollama)
+Query decomposer (Groq)
   → returns JSON array of 2–3 sub-questions (hard max: 3)
   │
   ▼
@@ -123,11 +123,11 @@ Context assembler
   throw HARD_LIMIT_EXCEEDED if over ceiling
   │
   ▼
-Research LLM call (Ollama)
+Research LLM call (Groq)
   returns answer to sub-question grounded in context
   │
   ▼
-Summariser (Ollama)
+Summariser (Groq)
   compress answer to ≤ 150 tokens
   output: { summary, sources_cited[], key_facts[] }
   write to memory_buffer.json (append)
@@ -136,7 +136,7 @@ Summariser (Ollama)
 END LOOP — collect all sub-question answers (max 3)
   │
   ▼
-Final synthesiser (Ollama)
+Final synthesiser (Groq)
   input: all sub-question answers (max 3) as numbered list
   output: single coherent answer ≤ 400 tokens
   │
@@ -159,7 +159,7 @@ Return: { final_answer, run_id }
 │   ├── chunker.js              # Run once at setup to index /docs
 │   ├── tokenCounter.js         # Shared token count approximation
 │   ├── keywordScorer.js        # BM25-style keyword overlap scorer
-│   ├── ollamaClient.js         # Ollama HTTP client
+│   ├── llmClient.js            # Groq HTTP client (OpenAI-compatible)
 │   ├── tavilyClient.js         # Tavily HTTP client
 │   ├── memoryBuffer.js         # Episodic memory read/write
 │   ├── tokenBudgetGate.js      # Rank and trim context to 1,600 tokens
@@ -188,7 +188,7 @@ Return: { final_answer, run_id }
 
 ## Known Limitations
 
-- Ollama runs locally. For n8n cloud to reach it, a tunnel (ngrok) must expose the local port. The free ngrok URL changes on every restart.
+- Groq free tier has rate limits (30 req/min) — batch runs may be throttled.
 - Token counting uses word × 1.33 approximation (±10% accuracy).
 - Document retrieval is keyword-based only. Synonym and paraphrase mismatches reduce recall.
 - Memory buffer grows without pruning (append-only in v1).

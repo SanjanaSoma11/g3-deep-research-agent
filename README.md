@@ -8,11 +8,9 @@ Built for the Binox 2026 Take-Home Assessment — Graduate Track G3.
 
 ## Important: Single-User Prototype
 
-**This is a single-user prototype. It is not designed for concurrent use, shared hosting, or production deployment.**
+**This is a single-user prototype. It is not designed for concurrent use or production deployment.**
 
-The main setup limitation is the **ngrok + n8n Cloud combination**: Ollama runs locally on your machine, and n8n Cloud cannot reach localhost directly. You must run ngrok to expose your local Ollama port to the internet, and the free ngrok tier generates a new URL every time you restart it. This means you must update `OLLAMA_BASE_URL` in both your `.env` file and n8n each time ngrok restarts.
-
-If you only want to run the agent from the command line without n8n, ngrok is not needed at all. See Step 5 below.
+LLM inference runs on Groq's free hosted API — no local GPU, no Ollama, no ngrok tunnel required. The only external dependencies are a Groq API key and a Tavily API key, both available free with no credit card.
 
 ---
 
@@ -21,7 +19,7 @@ If you only want to run the agent from the command line without n8n, ngrok is no
 This project is **Node-first**. The Node.js pipeline is the core application — it handles all API calls, memory management, token budgeting, and file I/O. n8n cloud is used only as a scheduler and manual trigger, sending a single HTTP POST to the Node.js endpoint.
 
 - **Core pipeline**: Node.js
-- **LLM inference**: Ollama (local, open-source — Mistral or Llama 3)
+- **LLM inference**: Groq API (free tier — Llama 3.3 70B)
 - **Web search**: Tavily API (free tier)
 - **Document retrieval**: User-uploaded PDFs and text files, keyword-scored
 - **Memory**: Episodic buffer in flat JSON, structured summaries only
@@ -40,8 +38,7 @@ See `evaluation.md` for trade-off reasoning and known limitations.
 | Dependency | Version | Notes |
 |---|---|---|
 | Node.js | 18+ | Core runtime |
-| Ollama | Latest | Must be running before pipeline executes |
-| ngrok | Latest | Only needed if using n8n cloud |
+| Groq API key | — | Free at https://console.groq.com — no credit card required |
 | Tavily API key | — | Free tier at tavily.com — 1,000 queries/month |
 | n8n cloud account | Free tier | Optional — only needed for scheduling |
 
@@ -71,8 +68,8 @@ cp .env.example .env
 Edit `.env` with your values:
 
 ```
-OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_MODEL=mistral
+GROQ_API_KEY=your_groq_api_key_here
+LLM_MODEL=llama-3.3-70b-versatile
 TAVILY_API_KEY=your_tavily_api_key_here
 DOCS_DIR=./docs
 MEMORY_BUFFER_PATH=./memory_buffer.json
@@ -80,17 +77,16 @@ OUTPUT_LOG_PATH=./output_log.json
 PORT=3000
 ```
 
-### Step 4 — Start Ollama and pull the model
+### Step 4 — Get a Groq API key
+
+1. Sign up at https://console.groq.com (free, no credit card required).
+2. Go to API Keys → Create API Key.
+3. Copy the key and paste it as `GROQ_API_KEY` in your `.env` file.
+
+Verify the key works:
 
 ```bash
-ollama serve
-ollama pull mistral
-```
-
-Verify Ollama is running:
-
-```bash
-curl http://localhost:11434/api/tags
+curl https://api.groq.com/openai/v1/models -H "Authorization: Bearer $GROQ_API_KEY"
 ```
 
 ### Step 5 — Add documents to the knowledge base (optional)
@@ -151,36 +147,37 @@ curl -X POST http://localhost:3000/query \
   -d '{"query": "What are the biggest challenges facing D2C consumer brands in 2025?"}'
 ```
 
+### Step 8b — Open the web interface
+
+With the server running (`node src/pipeline.js`), open your browser to:
+
+    http://localhost:3000
+
+The web interface lets you submit queries, view results, and browse past runs.
+This is the same server that handles API requests — no additional setup needed.
+
 ### Step 9 — Connect n8n cloud (optional, for scheduling only)
 
 This step is only needed if you want n8n to trigger the pipeline on a schedule.
 
-**9a. Expose Ollama via ngrok**
+**9a. Expose the Node.js pipeline via ngrok**
 
-n8n cloud cannot reach your local machine. Run ngrok to create a tunnel:
-
-```bash
-ngrok http 11434
-```
-
-Copy the HTTPS forwarding URL (e.g. `https://abc123.ngrok-free.app`) and update `OLLAMA_BASE_URL` in your `.env`.
-
-Note: free ngrok URLs change on every restart. Update `OLLAMA_BASE_URL` each time.
-
-**9b. Also expose the Node.js pipeline**
+n8n cloud cannot reach your local machine. Run ngrok to expose the pipeline:
 
 ```bash
 ngrok http 3000
 ```
 
-Copy this URL — you will use it as the target in n8n's HTTP Request node.
+Copy the HTTPS forwarding URL — you will use it as the target in n8n's HTTP Request node.
 
-**9c. Import the n8n workflow**
+**9b. Import the n8n workflow**
 
 1. Log in to n8n cloud at app.n8n.cloud
 2. Workflows → Import → upload `n8n_workflow_export.json`
 3. In the HTTP Request node, set the URL to your pipeline's ngrok URL + `/query`
 4. Save and activate
+
+Note: no Ollama ngrok tunnel is needed — LLM inference uses Groq's hosted API.
 
 ---
 
@@ -206,7 +203,7 @@ The second run should retrieve a summary from the first run via the episodic buf
 │   ├── chunker.js              # Document indexer (run once at setup)
 │   ├── tokenCounter.js         # Token count approximation utility
 │   ├── keywordScorer.js        # BM25-style keyword overlap scorer
-│   ├── ollamaClient.js         # Ollama HTTP client
+│   ├── llmClient.js            # Groq HTTP client (OpenAI-compatible)
 │   ├── tavilyClient.js         # Tavily HTTP client
 │   ├── memoryBuffer.js         # Episodic memory read/write
 │   ├── tokenBudgetGate.js      # Rank and trim context to 1,600 tokens
@@ -216,8 +213,13 @@ The second run should retrieve a summary from the first run via the episodic buf
 │       ├── decomposer.js       # Decomposition prompt (max 3 sub-questions)
 │       ├── summariser.js       # Sub-answer compression prompt
 │       └── synthesiser.js      # Final synthesis prompt
+├── public/
+│   ├── index.html              # Web interface
+│   ├── style.css               # Styles (no external dependencies)
+│   └── app.js                  # Frontend logic (vanilla JS)
 ├── docs/                       # Place uploaded PDFs and text files here
 ├── n8n_workflow_export.json    # Import into n8n cloud for scheduling (optional)
+├── render.yaml                 # Render hosting blueprint
 ├── smoke_test.js               # End-to-end smoke test
 ├── .env.example                # Environment variable template
 ├── .gitignore
@@ -234,8 +236,8 @@ The second run should retrieve a summary from the first run via the episodic buf
 
 | Variable | Default | Required |
 |---|---|---|
-| `OLLAMA_BASE_URL` | `http://localhost:11434` | Yes |
-| `OLLAMA_MODEL` | `mistral` | Yes |
+| `GROQ_API_KEY` | — | Yes |
+| `LLM_MODEL` | `llama-3.3-70b-versatile` | No |
 | `TAVILY_API_KEY` | — | Yes |
 | `DOCS_DIR` | `./docs` | No |
 | `MEMORY_BUFFER_PATH` | `./memory_buffer.json` | No |
@@ -247,12 +249,39 @@ The second run should retrieve a summary from the first run via the episodic buf
 ## Known Limitations
 
 - **Single-user prototype** — no concurrent run safety. Do not trigger multiple runs simultaneously.
-- **ngrok + n8n Cloud** — the main setup friction. ngrok free tier URLs change on restart; n8n is entirely optional if you use the CLI.
+- **Groq free tier rate limits** — 30 requests/minute may throttle batch runs.
 - Token counting is approximate (±10%). See `evaluation.md`.
 - Document retrieval is keyword-based only — synonym mismatches reduce recall.
 - Memory buffer grows without pruning in v1. Reset by clearing `memory_buffer.json` to `[]`.
 
 Full trade-off discussion in `evaluation.md`.
+
+---
+
+## Deployment (Render — Free Tier)
+
+This app can be deployed to Render's free tier directly from the GitHub repo. Since the LLM runs on Groq's hosted API (not locally), no GPU or high-RAM server is needed.
+
+### Prerequisites
+- A Render account (free at https://render.com)
+- A Groq API key (free at https://console.groq.com)
+- A Tavily API key (free at https://tavily.com)
+
+### Deploy steps
+1. Push this repo to GitHub.
+2. Log in to Render → New → Web Service → Connect your GitHub repo.
+3. Render auto-detects `render.yaml` and configures the service.
+4. Set environment variables in Render's dashboard:
+   - `GROQ_API_KEY` — your Groq API key
+   - `LLM_MODEL` — model name (default: `llama-3.3-70b-versatile`)
+   - `TAVILY_API_KEY` — your Tavily API key
+5. Deploy. The web interface will be available at `https://<your-service>.onrender.com`.
+
+### Limitations on Render free tier
+- Free tier services spin down after 15 minutes of inactivity. First request after spin-down takes ~30 seconds to cold-start.
+- Free tier has 512MB RAM. The Node.js pipeline itself is lightweight, but keep document uploads small.
+- `output_log.json` and `memory_buffer.json` are stored on Render's ephemeral filesystem — they reset on every deploy or restart. This is acceptable for a demo.
+- Groq free tier rate limits (30 req/min) may throttle batch runs.
 
 ---
 
