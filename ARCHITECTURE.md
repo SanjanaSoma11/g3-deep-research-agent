@@ -1,0 +1,198 @@
+# Architecture — G3 Deep Research Agent
+
+## Architectural Style
+
+This project is **Node-first**. The entire research pipeline is implemented as a Node.js application. n8n cloud is used exclusively as a scheduler and manual trigger — it sends a single HTTP POST to the Node.js pipeline's webhook endpoint and nothing else. All orchestration logic, API calls, memory management, token budgeting, and file I/O happen inside Node.js.
+
+This means:
+- The pipeline can be run directly from the command line without n8n
+- n8n is not required for development or testing — only for scheduled production runs
+- All logic is in version-controlled Node.js code, not inside n8n's visual workflow nodes
+
+---
+
+## Overview
+
+A deep research agent that answers complex, multi-part business research questions by:
+1. Decomposing the query into at most 3 sub-questions
+2. Retrieving context for each sub-question from two sources: Tavily web search and user-uploaded documents
+3. Ranking and compressing retrieved context to fit within a strict 2,000-token hard limit
+4. Answering each sub-question with a local Ollama LLM
+5. Writing structured summaries back to an episodic memory buffer
+6. Synthesising a final evidence-tracked answer
+
+**Orchestration**: Node.js (core pipeline) + n8n cloud free tier (trigger/scheduler only)
+**LLM inference**: Ollama running locally (open-source model — Mistral or Llama 3)
+**Web search**: Tavily API (free tier, research-optimised)
+**Document retrieval**: User-uploaded PDFs and text files, chunked and keyword-scored at startup
+**Memory backend**: Episodic buffer in flat JSON (`memory_buffer.json`)
+**Token constraint**: 1,600 tokens of retrieved context + 400 tokens of prompt overhead = 2,000 token hard ceiling per sub-question LLM call
+
+---
+
+## System Components
+
+### 1. Node.js Pipeline (Core)
+The pipeline is the application. It exposes a simple HTTP endpoint (`POST /query`) that accepts a query string and runs the full research pipeline synchronously, returning the final answer and run ID. It can also be invoked directly from the command line: `node src/pipeline.js "your query here"`.
+
+### 2. n8n Cloud (Trigger Only)
+One n8n workflow contains a single HTTP Request node that POSTs the query to the Node.js pipeline endpoint. n8n handles scheduling (Cron node) and provides a UI for manual triggering. No logic lives in n8n — it is a thin caller. The n8n workflow export (`n8n_workflow_export.json`) is provided for reproducibility but is optional for running the agent.
+
+### 3. Ollama (LLM)
+Ollama runs locally and exposes a REST API at the URL set in `OLLAMA_BASE_URL` (default: `http://localhost:11434`). Three prompt roles use Ollama: query decomposer, per-sub-question research call, and final synthesiser. The summariser also uses Ollama to compress answers before writing to the memory buffer. Recommended model: `mistral` (runs on 8GB RAM) or `llama3` (requires 16GB RAM).
+
+### 4. Tavily API (Web Search)
+Called once per sub-question. Returns top 3 results (title, URL, content snippet). Only the content snippet is used in context assembly. API key stored in environment variable `TAVILY_API_KEY` — never in source code.
+
+### 5. Document Store (User Uploads)
+Users place `.pdf` or `.txt` files in the `/docs` directory before running the agent. At startup, the chunker script reads all files, splits them into ~300-word chunks, and writes `chunks_index.json`. Each chunk stores: `source_filename`, `chunk_index`, `word_count`, `text`. Retrieval is keyword-based (overlap scoring) — no vector embeddings required.
+
+### 6. Episodic Memory Buffer
+`memory_buffer.json` stores structured summaries of previous research sessions. Each entry: `{ query, sub_questions, summaries, sources_used, timestamp }`. On each sub-question, the top 5 most keyword-relevant prior entries are retrieved and included in context ranking. After each sub-question answer is generated, the summariser compresses it and writes a new entry to the buffer (append-only).
+
+### 7. Output and Evidence Log
+`output_log.json` is append-only. Every run adds one record containing: `run_id`, `timestamp`, `model_used`, `original_query`, `sub_questions` (max 3), `final_answer`, `sources_used`, `context_kept`, `context_dropped`, `token_usage_per_subquestion`.
+
+---
+
+## Token Budget Rule
+
+This rule applies to every sub-question research LLM call. It is the single authoritative definition used throughout the codebase.
+
+```
+Retrieved context budget:    1,600 tokens  (web snippets + doc chunks + memory summaries)
+Prompt overhead budget:        400 tokens  (system prompt + sub-question text + formatting)
+─────────────────────────────────────────
+Hard ceiling per LLM call:   2,000 tokens  (never exceeded under any circumstance)
+```
+
+**How the 1,600-token context budget is spent:**
+
+1. All retrieved items (web snippets, doc chunks, memory summaries) are scored by keyword overlap against the sub-question.
+2. Items are sorted by score descending. Tiebreak priority: memory summaries > doc chunks > web snippets.
+3. Items are added to the kept list one by one until cumulative token count reaches 1,600.
+4. Any remaining items are dropped. Dropped items are recorded in the evidence log with reason "budget exceeded."
+5. No overflow summarisation step — dropped items are dropped cleanly. This keeps budget accounting simple and eliminates the risk of an overflow note pushing the total past the ceiling.
+
+**The 400-token prompt overhead is reserved and never used for retrieved content.** If the assembled prompt including overhead exceeds 2,000 tokens, the pipeline throws `HARD_LIMIT_EXCEEDED` and the run fails with a logged error.
+
+**Token counting method**: `Math.ceil(wordCount * 1.33)`. This is an approximation. Documented as such in `evaluation.md`.
+
+---
+
+## Data Flow
+
+```
+POST /query  (or: node src/pipeline.js "query")
+  │
+  ▼
+Query decomposer (Ollama)
+  → returns JSON array of 2–3 sub-questions (hard max: 3)
+  │
+  ▼
+FOR EACH sub-question (max 3 iterations):
+  │
+  ├─► Tavily API call
+  │     query = sub-question text
+  │     returns top 3 results: { title, url, content }
+  │
+  ├─► Document chunk retrieval
+  │     keyword-score all chunks_index.json entries against sub-question
+  │     return top 3 chunks by score
+  │
+  ├─► Episodic memory read
+  │     keyword-score all memory_buffer.json entries against sub-question
+  │     return top 5 entries by score
+  │
+  ▼
+Token budget gate
+  combine all retrieved items into one list
+  score each item (keyword overlap with sub-question)
+  sort descending (tiebreak: memory > docs > web)
+  keep items until cumulative tokens reach 1,600
+  drop remainder — log dropped items with reason "budget exceeded"
+  verify: kept_tokens ≤ 1,600
+  │
+  ▼
+Context assembler
+  build prompt:
+    system prompt + formatting    (≤ 400 tokens, reserved overhead)
+    kept context items            (≤ 1,600 tokens)
+    sub-question text
+  verify: total prompt tokens ≤ 2,000
+  throw HARD_LIMIT_EXCEEDED if over ceiling
+  │
+  ▼
+Research LLM call (Ollama)
+  returns answer to sub-question grounded in context
+  │
+  ▼
+Summariser (Ollama)
+  compress answer to ≤ 150 tokens
+  output: { summary, sources_cited[], key_facts[] }
+  write to memory_buffer.json (append)
+  │
+  ▼
+END LOOP — collect all sub-question answers (max 3)
+  │
+  ▼
+Final synthesiser (Ollama)
+  input: all sub-question answers (max 3) as numbered list
+  output: single coherent answer ≤ 400 tokens
+  │
+  ▼
+Evidence log writer
+  append full run record to output_log.json
+  │
+  ▼
+Return: { final_answer, run_id }
+```
+
+---
+
+## File Structure
+
+```
+/
+├── src/
+│   ├── pipeline.js             # Entry point — HTTP server + CLI handler
+│   ├── chunker.js              # Run once at setup to index /docs
+│   ├── tokenCounter.js         # Shared token count approximation
+│   ├── keywordScorer.js        # BM25-style keyword overlap scorer
+│   ├── ollamaClient.js         # Ollama HTTP client
+│   ├── tavilyClient.js         # Tavily HTTP client
+│   ├── memoryBuffer.js         # Episodic memory read/write
+│   ├── tokenBudgetGate.js      # Rank and trim context to 1,600 tokens
+│   ├── contextAssembler.js     # Build final prompt, verify ≤ 2,000 tokens
+│   ├── evidenceLogWriter.js    # Append to output_log.json
+│   └── prompts/
+│       ├── decomposer.js       # Query decomposition prompt (max 3 sub-questions)
+│       ├── summariser.js       # Sub-answer compression prompt
+│       └── synthesiser.js      # Final synthesis prompt
+├── docs/                       # Place uploaded PDFs and text files here
+├── memory_buffer.json          # Episodic memory (auto-created, append-only)
+├── output_log.json             # Evidence log (auto-created, append-only)
+├── chunks_index.json           # Document chunks (auto-created by chunker.js)
+├── n8n_workflow_export.json    # Optional: import into n8n cloud for scheduling
+├── smoke_test.js               # End-to-end smoke test
+├── .env.example                # Environment variable template
+├── .gitignore
+├── ARCHITECTURE.md
+├── CLAUDE.md
+├── SECURITY.md
+├── evaluation.md
+└── README.md
+```
+
+---
+
+## Known Limitations
+
+- Ollama runs locally. For n8n cloud to reach it, a tunnel (ngrok) must expose the local port. The free ngrok URL changes on every restart.
+- Token counting uses word × 1.33 approximation (±10% accuracy).
+- Document retrieval is keyword-based only. Synonym and paraphrase mismatches reduce recall.
+- Memory buffer grows without pruning (append-only in v1).
+- No concurrent run safety — single-user prototype only.
+- Uploaded documents are not sanitised beyond file type and size checks. Only upload trusted documents.
+
+Full trade-off discussion in `evaluation.md`.
