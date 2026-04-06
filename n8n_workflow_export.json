@@ -1,0 +1,140 @@
+{
+  "name": "G3 Deep Research Agent — Trigger",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "manual-trigger",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 15
+            }
+          ]
+        }
+      },
+      "id": "schedule-trigger",
+      "name": "Schedule Trigger (15 min min)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 480],
+      "notes": "Do not schedule at an interval shorter than 15 minutes (SECURITY.md rate limiting)."
+    },
+    {
+      "parameters": {
+        "url": "={{ $vars.PIPELINE_WEBHOOK_URL }}/query",
+        "method": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={{ JSON.stringify({ query: $json.query || 'What are the latest trends in AI infrastructure investment?' }) }}",
+        "options": {
+          "timeout": 120000,
+          "redirect": {
+            "redirect": {
+              "maxRedirects": 2
+            }
+          }
+        }
+      },
+      "id": "http-request-pipeline",
+      "name": "POST to Node.js Pipeline",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [520, 300],
+      "notes": "Posts the research query to the local Node.js pipeline exposed via ngrok tunnel. The PIPELINE_WEBHOOK_URL n8n variable should be set to the ngrok URL (e.g., https://xxxx.ngrok.io). No credentials are hardcoded here — the pipeline authenticates to Tavily and Ollama using its own environment variables."
+    },
+    {
+      "parameters": {
+        "content": "=Research pipeline result:\n\nRun ID: {{ $json.run_id }}\n\nFinal Answer:\n{{ $json.final_answer }}",
+        "options": {}
+      },
+      "id": "output-note",
+      "name": "Log Result",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [760, 300]
+    },
+    {
+      "parameters": {},
+      "id": "error-trigger",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [240, 660]
+    },
+    {
+      "parameters": {
+        "url": "={{ $vars.PIPELINE_WEBHOOK_URL }}/query",
+        "method": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={{ JSON.stringify({ query: '__log_error__', error: $json.error?.message || 'unknown error', workflow: $json.workflow?.name, execution: $json.execution?.id }) }}",
+        "options": {
+          "timeout": 10000
+        }
+      },
+      "id": "http-log-error",
+      "name": "Log Failed Run to Pipeline",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [520, 660],
+      "notes": "On workflow error, POSTs error details to the pipeline's /query endpoint. The pipeline detects the __log_error__ sentinel and writes a failed entry to output_log.json."
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [{ "node": "POST to Node.js Pipeline", "type": "main", "index": 0 }]
+      ]
+    },
+    "Schedule Trigger (15 min min)": {
+      "main": [
+        [{ "node": "POST to Node.js Pipeline", "type": "main", "index": 0 }]
+      ]
+    },
+    "POST to Node.js Pipeline": {
+      "main": [
+        [{ "node": "Log Result", "type": "main", "index": 0 }]
+      ]
+    },
+    "Error Trigger": {
+      "main": [
+        [{ "node": "Log Failed Run to Pipeline", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "meta": {
+    "instanceId": "g3-deep-research-agent",
+    "notes": "Import this workflow into n8n cloud free tier. Before use: set the n8n variable PIPELINE_WEBHOOK_URL to the ngrok tunnel URL exposing your local Node.js pipeline (default port 3000). The Tavily API key is managed by the Node.js pipeline via its own TAVILY_API_KEY env var — do not add it here. See README.md for full setup instructions."
+  }
+}

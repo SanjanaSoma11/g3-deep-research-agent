@@ -1,0 +1,18 @@
+{
+  "name": "g3-deep-research-agent",
+  "version": "1.0.0",
+  "description": "G3 Deep Research Agent — Node.js pipeline with Ollama + Tavily",
+  "main": "src/pipeline.js",
+  "scripts": {
+    "start": "node src/pipeline.js",
+    "chunk": "node src/chunker.js",
+    "test": "node smoke_test.js"
+  },
+  "dependencies": {
+    "pdf-parse": "^1.1.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "license": "MIT"
+}
