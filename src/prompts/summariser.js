@@ -9,7 +9,7 @@
  *   subQuestion {string} — the sub-question that was answered
  *   answer      {string} — the LLM's answer to that sub-question
  *
- * Output: {string} — complete prompt to send to Ollama
+ * Output: {string} — complete prompt to send to the Groq LLM
  *
  * The prompt instructs the model to:
  *   - Return ONLY a valid JSON object: { summary, sources_cited, key_facts }
@@ -23,7 +23,7 @@
  * Build the summariser prompt.
  * @param {string} subQuestion - The sub-question that was answered.
  * @param {string} answer - The answer to compress.
- * @returns {string} Complete prompt string ready to send to Ollama.
+ * @returns {string} Complete prompt string ready to send to the Groq LLM.
  */
 function buildSummariserPrompt(subQuestion, answer) {
   return `You are a research summariser. Compress the answer below into a structured JSON object.

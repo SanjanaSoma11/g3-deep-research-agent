@@ -33,17 +33,17 @@
  * Full pipeline (ARCHITECTURE.md data flow):
  *   1. Validate input query (SECURITY.md input validation).
  *   2. Run document chunker at startup (once per process lifetime).
- *   3. Decompose query → up to 3 sub-questions (Ollama).
+ *   3. Decompose query → up to 3 sub-questions (Groq — llmGenerate).
  *   4. For each sub-question:
  *      a. Tavily web search (top 3 results).
  *      b. Document chunk retrieval (top 3 by keyword score).
  *      c. Episodic memory read (top 5 by keyword score).
  *      d. Token budget gate (1,600 token context limit).
  *      e. Context assembler (builds final prompt, verifies ≤ 2,000 tokens).
- *      f. Research LLM call (Ollama).
- *      g. Summariser LLM call (Ollama) → compress answer.
+ *      f. Research LLM call (Groq — llmGenerate).
+ *      g. Summariser LLM call (Groq — llmGenerate) → compress answer.
  *      h. Write summary to memory buffer.
- *   5. Final synthesiser (Ollama) → single coherent answer.
+ *   5. Final synthesiser (Groq — llmGenerate) → single coherent answer.
  *   6. Evidence log writer → append to output_log.json.
  *   7. Return { final_answer, run_id }.
  *
@@ -652,23 +652,32 @@ function startHttpServer() {
 async function main() {
   const args = process.argv.slice(2);
 
-  if (args.length > 0) {
+  if (args[0] === '--server' || args.length === 0) {
+    // HTTP server mode: node src/pipeline.js --server  OR  node src/pipeline.js (no args)
+    await ensureChunksLoaded();
+    startHttpServer();
+  } else {
     // CLI mode: node src/pipeline.js "query here"
-    const cliQuery = args.join(' ');
-    console.log(`[pipeline] CLI mode. Query: "${cliQuery}"`);
+    const query = args.join(' ').trim();
+    if (!query) {
+      console.error('[pipeline] Usage: node src/pipeline.js "your query here"');
+      console.error('[pipeline] Or:   node src/pipeline.js --server');
+      process.exit(1);
+    }
+    console.log(`[pipeline] CLI mode. Query: "${query}"`);
 
     try {
-      const result = await runPipeline(cliQuery);
-      console.log('\n=== FINAL ANSWER ===');
+      const result = await runPipeline(query);
+      console.log('\n=== FINAL ANSWER ===\n');
       console.log(result.final_answer);
-      console.log(`\n=== RUN ID: ${result.run_id} ===`);
+      console.log(`\n[run_id: ${result.run_id}]`);
     } catch (err) {
       console.error(`[pipeline] Fatal error: ${err.message}`);
       // Log failed run
       try {
         writeEvidenceLog({
           model_used: getModelName(),
-          original_query: cliQuery,
+          original_query: query,
           sub_questions: [],
           final_answer: null,
           sources_used: [],
@@ -683,10 +692,6 @@ async function main() {
       }
       process.exit(1);
     }
-  } else {
-    // Server mode
-    await ensureChunksLoaded();
-    startHttpServer();
   }
 }
 

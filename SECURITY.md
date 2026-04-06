@@ -106,7 +106,7 @@ Uploaded document content and web search results are external, untrusted data. W
 
 ## Error Handling Requirements
 
-Every external call (Ollama, Tavily, file I/O) must follow this pattern:
+Every external call (Groq, Tavily, file I/O) must follow this pattern:
 
 1. Attempt the operation inside a try/catch
 2. On success: log the operation name and a success indicator

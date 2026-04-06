@@ -6,7 +6,7 @@
  * Prompt builder for query decomposition.
  *
  * Input:  query {string} — the original research query from the user
- * Output: {string} — complete prompt to send to Ollama
+ * Output: {string} — complete prompt to send to the Groq LLM
  *
  * The prompt instructs the model to:
  *   - Decompose the query into at most 3 focused sub-questions.
@@ -19,7 +19,7 @@
 /**
  * Build the query decomposition prompt.
  * @param {string} query - The user's original research query.
- * @returns {string} Complete prompt string ready to send to Ollama.
+ * @returns {string} Complete prompt string ready to send to the Groq LLM.
  */
 function buildDecomposerPrompt(query) {
   return `You are a research query decomposer. Your task is to break down a complex research question into at most 3 focused sub-questions.

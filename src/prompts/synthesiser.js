@@ -9,7 +9,7 @@
  *   subQuestionAnswers {Array<{subQuestion: string, answer: string}>}
  *     — array of up to 3 sub-question/answer pairs
  *
- * Output: {string} — complete prompt to send to Ollama
+ * Output: {string} — complete prompt to send to the Groq LLM
  *
  * The prompt instructs the model to:
  *   - Write a single coherent answer of ≤ 400 tokens.
@@ -21,7 +21,7 @@
 /**
  * Build the final synthesiser prompt.
  * @param {Array<{subQuestion: string, answer: string}>} subQuestionAnswers
- * @returns {string} Complete prompt string ready to send to Ollama.
+ * @returns {string} Complete prompt string ready to send to the Groq LLM.
  */
 function buildSynthesiserPrompt(subQuestionAnswers) {
   const numberedAnswers = subQuestionAnswers.map((qa, idx) =>

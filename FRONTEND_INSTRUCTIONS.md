@@ -2,7 +2,9 @@
 
 ## Context
 
-The G3 Deep Research Agent backend (Node.js pipeline) is fully built and working with Ollama. This file instructs Claude Code to:
+The G3 Deep Research Agent backend (Node.js pipeline) is fully built and working with Groq's hosted API (Llama 3.3 70B). Part 1 of this file is retained for historical reference — the Groq swap is already complete. Begin at Part 2 (Frontend) if the backend is confirmed working.
+
+This file instructs Claude Code to:
 
 1. **Replace Ollama with Groq's free hosted API** — eliminates the need for local LLM inference entirely.
 2. **Add a lightweight frontend** served by the existing Node.js process.
@@ -379,7 +381,7 @@ services:
         sync: false
 ```
 
-**Note:** Render's free tier assigns a random port via the `PORT` env var. The pipeline already reads `process.env.PORT`. Set a default of `10000` in the blueprint but Render will override it at runtime.
+**Note:** Render assigns the PORT at runtime. The pipeline reads `process.env.PORT` and defaults to 3000 locally. No --server flag is needed — zero-arg invocation starts the HTTP server.
 
 ### Step 20 — Handle Render's health check
 

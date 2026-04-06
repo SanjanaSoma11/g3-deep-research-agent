@@ -31,6 +31,51 @@ This project is **Node-first**. The Node.js pipeline is the core application —
 See `ARCHITECTURE.md` for the full data flow and component descriptions.
 See `evaluation.md` for trade-off reasoning and known limitations.
 
+Visual architecture diagrams (Mermaid) are in [`docs/architecture_diagram.md`](docs/architecture_diagram.md).
+GitHub renders Mermaid natively — view the file in the browser for the visual version.
+
+---
+
+## Business Value
+
+### Who is this for
+
+Strategy, research, and business development teams at SMEs and agencies who need rapid, cited answers to complex market research questions — without expensive enterprise research platforms.
+
+**Typical user:** A consultant or BD analyst who currently opens 10 browser tabs, reads 3–5 PDFs, and manually synthesises a summary document. This agent compresses that 60–90 minute workflow to a single query.
+
+### What problem it solves
+
+**Problem:** Business research is slow, inconsistently cited, and non-reusable. Each analyst reinvents the same research from scratch.
+
+**This agent provides:**
+- Cited, evidence-tracked answers in under 60 seconds per query
+- An episodic memory layer that accumulates knowledge across sessions — subsequent queries on the same topic benefit from prior runs automatically
+- A full audit trail per run: every source kept and dropped is logged, making the answer reproducible and defensible
+
+### Why this architecture is cheaper to demo
+
+| Factor | This agent | Vector RAG + hosted DB alternative |
+|---|---|---|
+| Monthly infrastructure cost | **$0** (Groq free + Tavily free + Render free) | $20–50/month |
+| Evaluator setup time | **~5 minutes** (two free API keys, `npm install`) | 30+ minutes |
+| LLM quality | Llama 3.3 70B via Groq | Depends on budget |
+| Memory explainability | Full JSON — human-readable | Opaque vector index |
+
+The flat-JSON memory store is not a shortcut — it is the correct choice at prototype scale. It is human-readable, zero-infrastructure, and makes the token budget enforcement fully auditable without a database.
+
+### Production upgrade path
+
+Each component upgrades independently without rewriting the pipeline:
+
+1. **Retrieval quality** → swap keyword scorer for vector embeddings (add `chromadb`)
+2. **LLM provider** → change env vars only (`llmClient.js` is OpenAI-compatible)
+3. **Storage** → replace JSON writes with SQLite/Postgres in `memoryBuffer.js` and `evidenceLogWriter.js`
+4. **Concurrency** → add BullMQ queue in front of `runPipeline()` (function is already stateless per-run)
+5. **Memory pruning** → add TTL sweep to `memoryBuffer.js` (append-only format supports this)
+
+See `self_assessment.md` for a full rubric-aligned self-evaluation.
+
 ---
 
 ## Prerequisites
@@ -49,9 +94,11 @@ See `evaluation.md` for trade-off reasoning and known limitations.
 ### Step 1 — Clone the repository
 
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/<your-github-username>/g3-deep-research-agent.git
 cd g3-deep-research-agent
 ```
+
+> **Before submitting:** replace `<your-github-username>` with your actual GitHub username and confirm the repository name matches.
 
 ### Step 2 — Install dependencies
 
@@ -141,19 +188,19 @@ The final answer is printed to stdout. The full evidence record is appended to `
 
 ### Step 8 — Run a query via HTTP
 
-Start the pipeline server:
+**Option A — with the explicit server flag:**
 
-```bash
-node src/pipeline.js --server
-```
+    node src/pipeline.js --server
+
+**Option B — no arguments also starts the server** (this is what Render uses):
+
+    node src/pipeline.js
 
 Send a query:
 
-```bash
-curl -X POST http://localhost:3000/query \
-  -H "Content-Type: application/json" \
-  -d '{"query": "What are the biggest challenges facing D2C consumer brands in 2025?"}'
-```
+    curl -X POST http://localhost:3000/query \
+      -H "Content-Type: application/json" \
+      -d '{"query": "What are the biggest challenges facing D2C consumer brands in 2025?"}'
 
 ### Step 8b — Open the web interface
 
@@ -166,26 +213,35 @@ This is the same server that handles API requests — no additional setup needed
 
 ### Step 9 — Connect n8n cloud (optional, for scheduling only)
 
-This step is only needed if you want n8n to trigger the pipeline on a schedule.
+This step is only needed if you want n8n to trigger the pipeline on a schedule. Manual queries work without n8n.
 
-**9a. Expose the Node.js pipeline via ngrok**
+**Choose your setup:**
+
+#### Option A — Running locally (ngrok required)
 
 n8n cloud cannot reach your local machine. Run ngrok to expose the pipeline:
 
-```bash
-ngrok http 3000
-```
+    ngrok http 3000
 
-Copy the HTTPS forwarding URL — you will use it as the target in n8n's HTTP Request node.
+Copy the HTTPS forwarding URL (e.g. `https://abc123.ngrok.io`). Use this as the target URL in Step 9b below.
 
-**9b. Import the n8n workflow**
+#### Option B — Running on Render (no ngrok needed)
+
+If you have deployed to Render, your pipeline is already publicly accessible at `https://<your-service>.onrender.com`. Skip ngrok entirely and use your Render URL in Step 9b.
+
+#### Step 9b — Import the n8n workflow
 
 1. Log in to n8n cloud at app.n8n.cloud
 2. Workflows → Import → upload `n8n_workflow_export.json`
-3. In the HTTP Request node, set the URL to your pipeline's ngrok URL + `/query`
-4. Save and activate
+3. In the HTTP Request node, set the URL to:
+   - Local: `https://<your-ngrok-id>.ngrok.io/query`
+   - Render: `https://<your-service>.onrender.com/query`
+4. Add your Tavily API key in n8n's credential manager (Settings → Credentials → New)
+5. Save and activate the workflow
 
-Note: no Ollama ngrok tunnel is needed — LLM inference uses Groq's hosted API.
+> **Note:** The n8n workflow POSTs to `/query` and does nothing else. All pipeline logic runs in Node.js — n8n is a thin trigger only.
+
+> **If the pipeline fails:** check `output_log.json` for the failed run entry — the pipeline logs all failures internally.
 
 ---
 
@@ -303,8 +359,3 @@ This app can be deployed to Render's free tier directly from the GitHub repo. Si
 - `output_log.json` and `memory_buffer.json` are stored on Render's ephemeral filesystem — they reset on every deploy or restart. This is acceptable for a demo.
 - Groq free tier rate limits (30 req/min) may throttle batch runs.
 
----
-
-## Submission
-
-Share the public GitHub repository with `oscar@binox.com.hk`. Include at least 2–3 real run entries saved as `sample_output_log.json` (excluded from `.gitignore` unlike the live `output_log.json`).

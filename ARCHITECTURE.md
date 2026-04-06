@@ -13,6 +13,9 @@ This means:
 
 ## Overview
 
+Visual architecture diagrams (Mermaid) are in [`docs/architecture_diagram.md`](docs/architecture_diagram.md).
+GitHub renders Mermaid natively — view the file in the browser for the visual version.
+
 A deep research agent that answers complex, multi-part business research questions by:
 1. Decomposing the query into at most 3 sub-questions
 2. Retrieving context for each sub-question from two sources: Tavily web search and user-uploaded documents

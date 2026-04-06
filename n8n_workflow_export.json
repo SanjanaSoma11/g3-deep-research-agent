@@ -69,41 +69,6 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.3,
       "position": [760, 300]
-    },
-    {
-      "parameters": {},
-      "id": "error-trigger",
-      "name": "Error Trigger",
-      "type": "n8n-nodes-base.errorTrigger",
-      "typeVersion": 1,
-      "position": [240, 660]
-    },
-    {
-      "parameters": {
-        "url": "={{ $vars.PIPELINE_WEBHOOK_URL }}/query",
-        "method": "POST",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Content-Type",
-              "value": "application/json"
-            }
-          ]
-        },
-        "sendBody": true,
-        "contentType": "json",
-        "body": "={{ JSON.stringify({ query: '__log_error__', error: $json.error?.message || 'unknown error', workflow: $json.workflow?.name, execution: $json.execution?.id }) }}",
-        "options": {
-          "timeout": 10000
-        }
-      },
-      "id": "http-log-error",
-      "name": "Log Failed Run to Pipeline",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [520, 660],
-      "notes": "On workflow error, POSTs error details to the pipeline's /query endpoint. The pipeline detects the __log_error__ sentinel and writes a failed entry to output_log.json."
     }
   ],
   "connections": {
@@ -121,11 +86,6 @@
       "main": [
         [{ "node": "Log Result", "type": "main", "index": 0 }]
       ]
-    },
-    "Error Trigger": {
-      "main": [
-        [{ "node": "Log Failed Run to Pipeline", "type": "main", "index": 0 }]
-      ]
     }
   },
   "settings": {
@@ -135,6 +95,6 @@
   "tags": [],
   "meta": {
     "instanceId": "g3-deep-research-agent",
-    "notes": "Import this workflow into n8n cloud free tier. Before use: set the n8n variable PIPELINE_WEBHOOK_URL to the URL of your deployed Node.js pipeline (e.g. ngrok tunnel for local dev, or your Render service URL for hosted deployment). The Groq and Tavily API keys are managed by the Node.js pipeline via its own GROQ_API_KEY and TAVILY_API_KEY env vars — do not add them here. See README.md for full setup instructions."
+    "notes": "Import this workflow into n8n cloud free tier. Before use: set the n8n variable PIPELINE_WEBHOOK_URL to the URL of your deployed Node.js pipeline (e.g. ngrok tunnel for local dev, or your Render service URL for hosted deployment). The Groq and Tavily API keys are managed by the Node.js pipeline via its own GROQ_API_KEY and TAVILY_API_KEY env vars — do not add them here. See README.md for full setup instructions. Error handling is performed inside the Node.js pipeline. Failed runs are written to output_log.json with status: 'failed' by evidenceLogWriter.js. n8n does not need a separate error handler."
   }
 }
