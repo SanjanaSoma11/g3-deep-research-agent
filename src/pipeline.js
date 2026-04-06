@@ -240,6 +240,8 @@ async function runPipeline(rawQuery) {
   const allTokenUsage = [];
   const allContextKept = [];
   const allContextDropped = [];
+  const allRetrievalQualities = [];
+  const subQSummaries = []; // collected for session-level memory write
 
   // Step 4: Per-sub-question loop
   for (const subQuestion of subQuestions) {
@@ -279,10 +281,15 @@ async function runPipeline(rawQuery) {
       budgetGateOutput = runTokenBudgetGate(webSnippets, docChunks, memorySummaries, subQuestion);
     } catch (err) {
       console.error(`[pipeline] Token budget gate failed: ${err.message}`);
-      // Record failure and skip this sub-question
-      subQuestionAnswers.push({ subQuestion, answer: `[Error: context assembly failed — ${err.message}]` });
-      allTokenUsage.push({ sub_question: subQuestion, tokens_used: 0, tokens_dropped: 0 });
+      subQuestionAnswers.push({ subQuestion, answer: `[Error: context assembly failed — ${err.message}]`, failed: true });
+      allTokenUsage.push({ sub_question: subQuestion, tokens_used: 0, tokens_dropped: 0, low_confidence: true });
       continue;
+    }
+
+    // Track retrieval quality
+    const retrievalQuality = budgetGateOutput.retrieval_quality || null;
+    if (retrievalQuality) {
+      allRetrievalQualities.push({ sub_question: subQuestion, ...retrievalQuality });
     }
 
     // Track context for evidence log
@@ -301,25 +308,29 @@ async function runPipeline(rawQuery) {
       assembledPrompt = assembled.prompt;
     } catch (err) {
       console.error(`[pipeline] Context assembly failed: ${err.message}`);
-      subQuestionAnswers.push({ subQuestion, answer: `[Error: context assembly failed — ${err.message}]` });
-      allTokenUsage.push({ sub_question: subQuestion, tokens_used: 0, tokens_dropped: 0 });
+      subQuestionAnswers.push({ subQuestion, answer: `[Error: context assembly failed — ${err.message}]`, failed: true });
+      allTokenUsage.push({ sub_question: subQuestion, tokens_used: 0, tokens_dropped: 0, low_confidence: true });
       continue;
     }
 
     // 4f. Research LLM call
     let answer = '';
+    let subQFailed = false;
     try {
       answer = await llmGenerate(assembledPrompt, 512);
     } catch (err) {
       console.error(`[pipeline] Research LLM call failed: ${err.message}`);
       answer = `[Error: LLM call failed — ${err.message}]`;
+      subQFailed = true;
     }
 
-    subQuestionAnswers.push({ subQuestion, answer });
+    const isWeakRetrieval = retrievalQuality && retrievalQuality.is_weak;
+    subQuestionAnswers.push({ subQuestion, answer, failed: subQFailed });
     allTokenUsage.push({
       sub_question: subQuestion,
       tokens_used: budgetGateOutput.kept_tokens,
-      tokens_dropped: budgetGateOutput.dropped_tokens
+      tokens_dropped: budgetGateOutput.dropped_tokens,
+      low_confidence: subQFailed || isWeakRetrieval || false
     });
 
     // 4g. Summariser LLM call (compress answer for memory)
@@ -348,20 +359,15 @@ async function runPipeline(rawQuery) {
       };
     }
 
-    // 4h. Write to memory buffer
-    try {
-      const memoryEntry = {
-        query,
-        sub_questions: [subQuestion],
-        summaries: [summaryObj],
-        sources_used: budgetGateOutput.kept.map(item => ({ type: item.type, label: item.source })),
-        timestamp: new Date().toISOString()
-      };
-      writeMemory(memoryEntry);
-    } catch (err) {
-      console.error(`[pipeline] Memory write failed: ${err.message}`);
-      // Non-fatal — continue
-    }
+    // 4h. Collect per-sub-question summary for session-level memory write (Step 5)
+    // (Memory write happens once after final synthesis — see below)
+    subQSummaries.push({
+      subQuestion,
+      summaryObj,
+      keptItems: budgetGateOutput.kept,
+      answer,
+      failed: subQFailed
+    });
   } // end sub-question loop
 
   // Step 5: Final synthesis
@@ -384,6 +390,83 @@ async function runPipeline(rawQuery) {
     }
   }
 
+  // Step 5: Session-level memory write (one entry per successful run)
+  // Quality gate (Step 2): only write if run produced real evidence.
+  // Gate conditions checked below before calling writeMemory.
+  const successfulSubs = subQSummaries.filter(s => {
+    if (s.failed) {
+      console.log(`[pipeline] Memory write suppressed for sub-question "${s.subQuestion.substring(0, 60)}": sub-question failed.`);
+      return false;
+    }
+    const hasFreshSource = s.keptItems.some(item => item.type === 'web' || item.type === 'doc');
+    if (!hasFreshSource) {
+      console.log(`[pipeline] Memory write suppressed for sub-question "${s.subQuestion.substring(0, 60)}": no web or doc sources in kept context.`);
+      return false;
+    }
+    if (s.answer.trimStart().startsWith('[Error')) {
+      console.log(`[pipeline] Memory write suppressed for sub-question "${s.subQuestion.substring(0, 60)}": answer is an error string.`);
+      return false;
+    }
+    const wordCount = s.answer.trim().split(/\s+/).filter(Boolean).length;
+    if (wordCount < 50) {
+      console.log(`[pipeline] Memory write suppressed for sub-question "${s.subQuestion.substring(0, 60)}": answer under 50 words (${wordCount}).`);
+      return false;
+    }
+    const sourcesCited = s.summaryObj && Array.isArray(s.summaryObj.sources_cited) ? s.summaryObj.sources_cited : [];
+    if (sourcesCited.length === 0) {
+      console.log(`[pipeline] Memory write suppressed for sub-question "${s.subQuestion.substring(0, 60)}": summariser returned no sources_cited.`);
+      return false;
+    }
+    return true;
+  });
+
+  // Determine overall status before deciding whether to write memory
+  const successCountPreStatus = subQuestionAnswers.filter(qa => !qa.failed).length;
+  const overallRunSuccess = successCountPreStatus > 0 && subQuestionAnswers.filter(qa => qa.failed).length === 0;
+
+  if (overallRunSuccess && successfulSubs.length > 0) {
+    try {
+      // Collect deduplicated source labels across all successful sub-questions
+      const allSourceLabels = [...new Set(
+        successfulSubs.flatMap(s => s.keptItems.map(item => item.source))
+      )];
+      const memoryEntry = {
+        query,
+        sub_questions: successfulSubs.map(s => s.subQuestion),
+        summaries: successfulSubs.map(s => ({
+          sub_question: s.subQuestion,
+          summary: s.summaryObj.summary || '',
+          sources_cited: s.summaryObj.sources_cited || [],
+          key_facts: s.summaryObj.key_facts || []
+        })),
+        sources_used: allSourceLabels,
+        timestamp: new Date().toISOString(),
+        run_id: undefined // filled after log write below — set to 'pending' for now
+      };
+      writeMemory(memoryEntry);
+    } catch (err) {
+      console.error(`[pipeline] Session memory write failed: ${err.message}`);
+      // Non-fatal
+    }
+  } else {
+    console.log(`[pipeline] Session memory write skipped: overallRunSuccess=${overallRunSuccess}, qualifyingSubs=${successfulSubs.length}`);
+  }
+
+  // Determine run status
+  const successCount = subQuestionAnswers.filter(qa => !qa.failed).length;
+  const failedCount = subQuestionAnswers.filter(qa => qa.failed).length;
+  let runStatus;
+  let runErrorMessage = null;
+  if (subQuestions.length === 0 || successCount === 0) {
+    runStatus = 'failed';
+    runErrorMessage = 'All sub-questions failed or no sub-questions were generated.';
+  } else if (failedCount > 0) {
+    runStatus = 'partial';
+    runErrorMessage = `${failedCount} of ${subQuestions.length} sub-question(s) failed.`;
+  } else {
+    runStatus = 'success';
+  }
+
   // Step 6: Evidence log
   let runId;
   try {
@@ -391,18 +474,21 @@ async function runPipeline(rawQuery) {
       model_used: getModelName(),
       original_query: query,
       sub_questions: subQuestions,
-      final_answer: finalAnswer,
+      final_answer: runStatus === 'failed' ? null : finalAnswer,
       sources_used: allSourcesUsed,
       token_usage: allTokenUsage,
       context_kept: allContextKept,
-      context_dropped: allContextDropped
+      context_dropped: allContextDropped,
+      status: runStatus,
+      error_message: runErrorMessage,
+      retrieval_quality: allRetrievalQualities.length > 0 ? allRetrievalQualities : null
     });
   } catch (err) {
     console.error(`[pipeline] Evidence log write failed: ${err.message}`);
     runId = 'unknown';
   }
 
-  console.log(`[pipeline] Pipeline complete. run_id=${runId}`);
+  console.log(`[pipeline] Pipeline complete. run_id=${runId} status=${runStatus}`);
 
   return { final_answer: finalAnswer, run_id: runId };
 }
@@ -536,13 +622,13 @@ function startHttpServer() {
             model_used: getModelName(),
             original_query: typeof queryInput === 'string' ? queryInput : '',
             sub_questions: [],
-            final_answer: '',
+            final_answer: null,
             sources_used: [],
             token_usage: [],
             context_kept: [],
             context_dropped: [],
             status: 'failed',
-            error: err.message
+            error_message: err.message
           });
         } catch (logErr) {
           console.error(`[pipeline] Failed to log error run: ${logErr.message}`);
@@ -584,13 +670,13 @@ async function main() {
           model_used: getModelName(),
           original_query: cliQuery,
           sub_questions: [],
-          final_answer: '',
+          final_answer: null,
           sources_used: [],
           token_usage: [],
           context_kept: [],
           context_dropped: [],
           status: 'failed',
-          error: err.message
+          error_message: err.message
         });
       } catch (logErr) {
         console.error(`[pipeline] Failed to log error run: ${logErr.message}`);

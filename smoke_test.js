@@ -181,6 +181,20 @@ async function runSmokeTest() {
     `Got ${newEntry ? newEntry.sub_questions.length : 'undefined'} sub-questions`
   );
 
+  // Assertion 9: status field is present and equals "success"
+  assert(
+    newEntry && newEntry.status === 'success',
+    'Log entry has status "success"',
+    `status="${newEntry ? newEntry.status : 'undefined'}"`
+  );
+
+  // Assertion 10: error_message is null on a successful run
+  assert(
+    newEntry && newEntry.error_message === null,
+    'Log entry has null error_message on success',
+    `error_message="${newEntry ? newEntry.error_message : 'undefined'}"`
+  );
+
   // Print final answer for human review
   console.log('\n--- Final Answer (for manual review) ---\n');
   console.log(result.final_answer || '(empty)');

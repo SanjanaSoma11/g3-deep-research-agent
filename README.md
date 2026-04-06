@@ -123,6 +123,14 @@ PASS: sources_used is non-empty
 PASS: no sub-question context exceeded 2,000 tokens
 ```
 
+### Step 6b — Run unit tests
+
+```bash
+node tests/unit.js
+```
+
+Tests cover token counting, keyword scoring, deduplication, budget gate logic, and memory quality gate.
+
 ### Step 7 — Run a query (command line — no n8n needed)
 
 ```bash
@@ -220,6 +228,8 @@ The second run should retrieve a summary from the first run via the episodic buf
 ├── docs/                       # Place uploaded PDFs and text files here
 ├── n8n_workflow_export.json    # Import into n8n cloud for scheduling (optional)
 ├── render.yaml                 # Render hosting blueprint
+├── tests/
+│   └── unit.js                 # Unit tests for non-LLM deterministic logic
 ├── smoke_test.js               # End-to-end smoke test
 ├── .env.example                # Environment variable template
 ├── .gitignore
@@ -243,6 +253,16 @@ The second run should retrieve a summary from the first run via the episodic buf
 | `MEMORY_BUFFER_PATH` | `./memory_buffer.json` | No |
 | `OUTPUT_LOG_PATH` | `./output_log.json` | No |
 | `PORT` | `3000` | No |
+
+---
+
+## Quality Controls
+
+- **Run status tracking**: Every run is logged as `success`, `failed`, or `partial`. Failed runs include an `error_message` field.
+- **Memory quality gate**: Only successful runs with at least one non-memory source are written to the episodic memory buffer. Failed or low-evidence runs do not pollute future retrieval.
+- **Context deduplication**: Duplicate sources are removed before the token budget gate, ensuring the 1,600-token context budget is spent on unique evidence.
+- **Low-confidence detection**: When retrieval quality is weak (no fresh web or document sources, low relevance scores), the agent flags the answer as low-confidence and avoids broad extrapolation.
+- **Sample output curation**: `sample_output_log.json` contains only successful, well-sourced runs that demonstrate the agent's capabilities including the budget constraint.
 
 ---
 

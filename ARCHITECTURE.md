@@ -48,10 +48,10 @@ Called once per sub-question. Returns top 3 results (title, URL, content snippet
 Users place `.pdf` or `.txt` files in the `/docs` directory before running the agent. At startup, the chunker script reads all files, splits them into ~300-word chunks, and writes `chunks_index.json`. Each chunk stores: `source_filename`, `chunk_index`, `word_count`, `text`. Retrieval is keyword-based (overlap scoring) — no vector embeddings required.
 
 ### 6. Episodic Memory Buffer
-`memory_buffer.json` stores structured summaries of previous research sessions. Each entry: `{ query, sub_questions, summaries, sources_used, timestamp }`. On each sub-question, the top 5 most keyword-relevant prior entries are retrieved and included in context ranking. After each sub-question answer is generated, the summariser compresses it and writes a new entry to the buffer (append-only).
+`memory_buffer.json` stores structured summaries of previous research sessions. Each entry contains all sub-question summaries for a single run: `{ query, sub_questions, summaries, sources_used, timestamp, run_id }`. On each sub-question, the top 5 most keyword-relevant prior entries are retrieved and included in context ranking. A single memory entry is written after the final synthesiser completes — one entry per successful run, not one per sub-question. Only successful runs with at least one non-memory source are written; failed or low-evidence runs do not pollute future retrieval.
 
 ### 7. Output and Evidence Log
-`output_log.json` is append-only. Every run adds one record containing: `run_id`, `timestamp`, `model_used`, `original_query`, `sub_questions` (max 3), `final_answer`, `sources_used`, `context_kept`, `context_dropped`, `token_usage_per_subquestion`.
+`output_log.json` is append-only. Every run adds one record containing: `run_id`, `timestamp`, `model_used`, `original_query`, `sub_questions` (max 3), `final_answer`, `sources_used`, `context_kept`, `context_dropped`, `token_usage` (with `low_confidence` per sub-question), `status` (`"success"`, `"failed"`, or `"partial"`), `error_message`, and `retrieval_quality`.
 
 ---
 
@@ -69,10 +69,11 @@ Hard ceiling per LLM call:   2,000 tokens  (never exceeded under any circumstanc
 **How the 1,600-token context budget is spent:**
 
 1. All retrieved items (web snippets, doc chunks, memory summaries) are scored by keyword overlap against the sub-question.
-2. Items are sorted by score descending. Tiebreak priority: memory summaries > doc chunks > web snippets.
-3. Items are added to the kept list one by one until cumulative token count reaches 1,600.
-4. Any remaining items are dropped. Dropped items are recorded in the evidence log with reason "budget exceeded."
-5. No overflow summarisation step — dropped items are dropped cleanly. This keeps budget accounting simple and eliminates the risk of an overflow note pushing the total past the ceiling.
+2. Items are deduplicated by source label before the keep/drop loop. Web snippets dedup by URL; doc chunks dedup by `source_filename:chunk_index`; memory entries dedup by timestamp. Within each duplicate group, the highest-scoring item is kept.
+3. Items are sorted by score descending. Tiebreak priority: memory summaries > doc chunks > web snippets.
+4. Items are added to the kept list one by one until cumulative token count reaches 1,600.
+5. Any remaining items are dropped. Dropped items are recorded in the evidence log with reason "budget exceeded."
+6. No overflow summarisation step — dropped items are dropped cleanly. This keeps budget accounting simple and eliminates the risk of an overflow note pushing the total past the ceiling.
 
 **The 400-token prompt overhead is reserved and never used for retrieved content.** If the assembled prompt including overhead exceeds 2,000 tokens, the pipeline throws `HARD_LIMIT_EXCEEDED` and the run fails with a logged error.
 
@@ -130,7 +131,7 @@ Research LLM call (Groq)
 Summariser (Groq)
   compress answer to ≤ 150 tokens
   output: { summary, sources_cited[], key_facts[] }
-  write to memory_buffer.json (append)
+  (summary collected — memory write deferred to after synthesis)
   │
   ▼
 END LOOP — collect all sub-question answers (max 3)
@@ -141,8 +142,16 @@ Final synthesiser (Groq)
   output: single coherent answer ≤ 400 tokens
   │
   ▼
+Session-level memory write (quality gate)
+  if run is successful AND at least one sub-question has fresh evidence:
+    write ONE memory entry containing all sub-question summaries
+  else: skip write (failed/partial/low-evidence runs do not write to memory)
+  append to memory_buffer.json
+  │
+  ▼
 Evidence log writer
   append full run record to output_log.json
+  includes: status, error_message, retrieval_quality, low_confidence per sub-question
   │
   ▼
 Return: { final_answer, run_id }
@@ -174,6 +183,8 @@ Return: { final_answer, run_id }
 ├── output_log.json             # Evidence log (auto-created, append-only)
 ├── chunks_index.json           # Document chunks (auto-created by chunker.js)
 ├── n8n_workflow_export.json    # Optional: import into n8n cloud for scheduling
+├── tests/
+│   └── unit.js                 # Unit tests for non-LLM deterministic logic
 ├── smoke_test.js               # End-to-end smoke test
 ├── .env.example                # Environment variable template
 ├── .gitignore
@@ -194,5 +205,6 @@ Return: { final_answer, run_id }
 - Memory buffer grows without pruning (append-only in v1).
 - No concurrent run safety — single-user prototype only.
 - Uploaded documents are not sanitised beyond file type and size checks. Only upload trusted documents.
+- No semantic deduplication — exact-label dedup only. Two web snippets from the same domain with different URLs are not deduplicated.
 
 Full trade-off discussion in `evaluation.md`.

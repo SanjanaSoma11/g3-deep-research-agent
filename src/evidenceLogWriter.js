@@ -10,16 +10,19 @@
  *
  * Record schema (CLAUDE.md Step 13):
  * {
- *   run_id:         string  (UUID)
- *   timestamp:      string  (ISO 8601)
- *   model_used:     string
- *   original_query: string
- *   sub_questions:  string[]
- *   final_answer:   string
- *   sources_used:   Array<{ type: "web"|"doc"|"memory", label: string }>
- *   token_usage:    Array<{ sub_question: string, tokens_used: number, tokens_dropped: number }>
- *   context_kept:   Array<{ source: string, tokens: number }>
+ *   run_id:          string  (UUID)
+ *   timestamp:       string  (ISO 8601)
+ *   model_used:      string
+ *   original_query:  string
+ *   sub_questions:   string[]
+ *   final_answer:    string | null
+ *   sources_used:    Array<{ type: "web"|"doc"|"memory", label: string }>
+ *   token_usage:     Array<{ sub_question: string, tokens_used: number, tokens_dropped: number, low_confidence: boolean }>
+ *   context_kept:    Array<{ source: string, tokens: number }>
  *   context_dropped: Array<{ source: string, tokens: number, reason: string }>
+ *   status:          "success" | "failed" | "partial"
+ *   error_message:   string | null
+ *   retrieval_quality: object | null
  * }
  *
  * Security (SECURITY.md):
@@ -54,18 +57,33 @@ function loadLog() {
 }
 
 /**
+ * Deduplicate sources_used by label (keep first occurrence).
+ * @param {Array<{type: string, label: string}>} sources
+ * @returns {Array<{type: string, label: string}>}
+ */
+function deduplicateSources(sources) {
+  const seen = new Set();
+  return (sources || []).filter(s => {
+    if (seen.has(s.label)) return false;
+    seen.add(s.label);
+    return true;
+  });
+}
+
+/**
  * Append a run record to output_log.json.
  * @param {{
  *   model_used: string,
  *   original_query: string,
  *   sub_questions: string[],
- *   final_answer: string,
+ *   final_answer: string | null,
  *   sources_used: Array<{type: string, label: string}>,
- *   token_usage: Array<{sub_question: string, tokens_used: number, tokens_dropped: number}>,
+ *   token_usage: Array<{sub_question: string, tokens_used: number, tokens_dropped: number, low_confidence?: boolean}>,
  *   context_kept: Array<{source: string, tokens: number}>,
  *   context_dropped: Array<{source: string, tokens: number, reason: string}>,
- *   status?: string,
- *   error?: string
+ *   status: "success" | "failed" | "partial",
+ *   error_message: string | null,
+ *   retrieval_quality?: object | null
  * }} runData
  * @returns {string} The run_id assigned to this record.
  */
@@ -77,16 +95,15 @@ function writeEvidenceLog(runData) {
     model_used: runData.model_used || '',
     original_query: runData.original_query || '',
     sub_questions: runData.sub_questions || [],
-    final_answer: runData.final_answer || '',
-    sources_used: runData.sources_used || [],
+    final_answer: runData.final_answer !== undefined ? runData.final_answer : null,
+    sources_used: deduplicateSources(runData.sources_used),
     token_usage: runData.token_usage || [],
     context_kept: runData.context_kept || [],
-    context_dropped: runData.context_dropped || []
+    context_dropped: runData.context_dropped || [],
+    status: runData.status || 'success',
+    error_message: runData.error_message || null,
+    retrieval_quality: runData.retrieval_quality || null
   };
-
-  // Include optional status/error fields for failed runs
-  if (runData.status) record.status = runData.status;
-  if (runData.error) record.error = runData.error;
 
   const log = loadLog();
   log.push(record);

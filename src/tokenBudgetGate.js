@@ -58,12 +58,13 @@ function normaliseItems(webSnippets, docChunks, memorySummaries) {
     });
   }
 
-  // Document chunks
+  // Document chunks — source key includes chunk_index so distinct chunks from the
+  // same file are not collapsed by deduplication (only exact-same chunk duplicates dedup).
   for (const chunk of (docChunks || [])) {
     const text = chunk.text || '';
     items.push({
       type: 'doc',
-      source: chunk.source_filename || 'doc',
+      source: `${chunk.source_filename || 'doc'}:${chunk.chunk_index ?? 0}`,
       text,
       tokens: countTokens(text)
     });
@@ -91,12 +92,34 @@ function normaliseItems(webSnippets, docChunks, memorySummaries) {
 }
 
 /**
+ * Deduplicate items by source label, keeping the highest-scoring item per label.
+ * Must be called after scoring but before the keep/drop loop.
+ * @param {Array<{source: string, score: number}>} scoredItems
+ * @returns {Array}
+ */
+function deduplicateBySource(scoredItems) {
+  const best = new Map(); // source label → item
+  for (const item of scoredItems) {
+    const existing = best.get(item.source);
+    if (!existing || item.score > existing.score) {
+      best.set(item.source, item);
+    }
+  }
+  const deduped = Array.from(best.values());
+  const removed = scoredItems.length - deduped.length;
+  if (removed > 0) {
+    console.log(`[tokenBudgetGate] Deduplication removed ${removed} item(s) before budget gate.`);
+  }
+  return deduped;
+}
+
+/**
  * Run the token budget gate.
  * @param {Array} webSnippets
  * @param {Array} docChunks
  * @param {Array} memorySummaries
  * @param {string} subQuestion
- * @returns {{ kept: Array, dropped: Array, kept_tokens: number, dropped_tokens: number }}
+ * @returns {{ kept: Array, dropped: Array, kept_tokens: number, dropped_tokens: number, retrieval_quality: object }}
  */
 function runTokenBudgetGate(webSnippets, docChunks, memorySummaries, subQuestion) {
   const items = normaliseItems(webSnippets, docChunks, memorySummaries);
@@ -113,12 +136,15 @@ function runTokenBudgetGate(webSnippets, docChunks, memorySummaries, subQuestion
     return (SOURCE_PRIORITY[b.type] || 0) - (SOURCE_PRIORITY[a.type] || 0);
   });
 
+  // Deduplicate by source label before the keep/drop loop
+  const deduped = deduplicateBySource(scored);
+
   const kept = [];
   const dropped = [];
   let keptTokens = 0;
   let droppedTokens = 0;
 
-  for (const item of scored) {
+  for (const item of deduped) {
     if (keptTokens + item.tokens <= CONTEXT_BUDGET) {
       keptTokens += item.tokens;
       kept.push(item);
@@ -134,13 +160,45 @@ function runTokenBudgetGate(webSnippets, docChunks, memorySummaries, subQuestion
     throw new Error('HARD_LIMIT_EXCEEDED');
   }
 
-  console.log(`[tokenBudgetGate] kept=${kept.length} items (${keptTokens} tokens), dropped=${dropped.length} items (${droppedTokens} tokens)`);
+  // Retrieval quality assessment (Step 4)
+  const topScore = kept.length > 0 ? kept[0].score : 0;
+  const freshSourceCount = kept.filter(item => item.type === 'web' || item.type === 'doc').length;
+  const memoryOnly = kept.length > 0 && freshSourceCount === 0;
+
+  let isWeak = false;
+  let weakReason = null;
+
+  if (kept.length === 0) {
+    isWeak = true;
+    weakReason = 'No items kept — no relevant context found.';
+  } else if (topScore < 0.15) {
+    isWeak = true;
+    weakReason = `Top relevance score (${topScore.toFixed(3)}) is below 0.15 threshold.`;
+  } else if (memoryOnly && topScore < 0.3) {
+    isWeak = true;
+    weakReason = `All kept items are from memory and top score (${topScore.toFixed(3)}) is below 0.3.`;
+  }
+
+  const retrievalQuality = {
+    is_weak: isWeak,
+    reason: weakReason,
+    fresh_source_count: freshSourceCount,
+    memory_only: memoryOnly,
+    top_score: topScore
+  };
+
+  if (isWeak) {
+    console.warn(`[tokenBudgetGate] Weak retrieval detected: ${weakReason}`);
+  }
+
+  console.log(`[tokenBudgetGate] kept=${kept.length} items (${keptTokens} tokens), dropped=${dropped.length} items (${droppedTokens} tokens), top_score=${topScore.toFixed(3)}, is_weak=${isWeak}`);
 
   return {
     kept,
     dropped,
     kept_tokens: keptTokens,
-    dropped_tokens: droppedTokens
+    dropped_tokens: droppedTokens,
+    retrieval_quality: retrievalQuality
   };
 }
 

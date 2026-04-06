@@ -1,0 +1,833 @@
+[
+  {
+    "run_id": "840f3eed-4cfe-4702-8767-3be2b0fe76ea",
+    "timestamp": "2026-04-06T22:57:23.117Z",
+    "model_used": "llama-3.3-70b-versatile",
+    "original_query": "What pricing strategies are B2B SaaS companies using in 2025?",
+    "sub_questions": [
+      "What are the most common pricing models used by B2B SaaS companies in 2025?",
+      "How do B2B SaaS companies determine the optimal price for their products or services?",
+      "What role do value metrics, customer segmentation, and competition play in shaping B2B SaaS pricing strategies?"
+    ],
+    "final_answer": "B2B SaaS companies are adopting pricing models that align with customer needs and usage habits [Q1]. The most popular approach is the monthly subscription model, used by nearly 47% of companies, followed by tiered pricing [Q1]. To determine the optimal price for their products or services, companies consider factors such as the value their product provides to the customer, production costs, customer willingness to pay, and competitor research [Q2]. They also conduct customer interviews, create buyer personas, and analyze customer data to inform their pricing strategy [Q2]. \n\nValue metrics, customer segmentation, and competition play significant roles in shaping B2B SaaS pricing strategies [Q3]. Companies segment accounts and benchmark competitors to inform their pricing strategy, with customer value drivers influencing pricing decisions [Q3]. Segmentation allows for differentiated pricing, capturing variance in willingness-to-pay without abandoning lower-profit segments [Q3]. By considering these factors and adopting flexible pricing models, B2B SaaS companies can create pricing strategies that meet the diverse needs of their customers [Q1]. Ultimately, a well-designed pricing strategy can increase demand and drive business growth [Q2].",
+    "sources_used": [
+      {
+        "type": "web",
+        "label": "https://www.insight2profit.com/the-best-and-worst-saas-pricing-models/"
+      },
+      {
+        "type": "web",
+        "label": "https://www.linkedin.com/pulse/saas-pricing-models-strategy-2025-fariduzzaman-swadhin-tkazc"
+      },
+      {
+        "type": "memory",
+        "label": "memory:2026-04-06T18:26:27.406Z"
+      },
+      {
+        "type": "memory",
+        "label": "memory:2026-04-06T18:22:33.914Z"
+      },
+      {
+        "type": "memory",
+        "label": "memory:2026-04-06T18:23:06.190Z"
+      },
+      {
+        "type": "memory",
+        "label": "memory:2026-04-06T18:25:34.171Z"
+      },
+      {
+        "type": "memory",
+        "label": "memory:2026-04-06T18:26:23.508Z"
+      },
+      {
+        "type": "web",
+        "label": "https://www.artisangrowthstrategies.com/blog/b2b-saas-pricing-models-complete-2025-guide"
+      },
+      {
+        "type": "doc",
+        "label": "ai_enterprise_adoption_2025.txt:0"
+      },
+      {
+        "type": "doc",
+        "label": "remote_work_policy_2025.txt:1"
+      },
+      {
+        "type": "doc",
+        "label": "ai_enterprise_adoption_2025.txt:1"
+      },
+      {
+        "type": "web",
+        "label": "https://railsware.com/blog/b2b-saas-pricing/"
+      },
+      {
+        "type": "web",
+        "label": "https://bowerycap.com/blog/sales/best-product-pricing-practices-for-b2b-saas"
+      },
+      {
+        "type": "web",
+        "label": "https://wynter.com/post/8-lessons-learned-optimizing-b2b-saas-pricing"
+      },
+      {
+        "type": "doc",
+        "label": "remote_work_policy_2025.txt:0"
+      },
+      {
+        "type": "web",
+        "label": "https://www.forbes.com/councils/forbesbusinesscouncil/2026/02/26/the-strategies-of-value-based-pricing-in-saas/"
+      },
+      {
+        "type": "web",
+        "label": "https://www.omnibound.ai/blog/b2b-pricing"
+      },
+      {
+        "type": "web",
+        "label": "https://www.getmonetizely.com/blogs/complete-guide-to-saas-pricing-models-for-2025-2026"
+      }
+    ],
+    "token_usage": [
+      {
+        "sub_question": "What are the most common pricing models used by B2B SaaS companies in 2025?",
+        "tokens_used": 1566,
+        "tokens_dropped": 0,
+        "low_confidence": false
+      },
+      {
+        "sub_question": "How do B2B SaaS companies determine the optimal price for their products or services?",
+        "tokens_used": 1377,
+        "tokens_dropped": 692,
+        "low_confidence": true
+      },
+      {
+        "sub_question": "What role do value metrics, customer segmentation, and competition play in shaping B2B SaaS pricing strategies?",
+        "tokens_used": 1435,
+        "tokens_dropped": 399,
+        "low_confidence": false
+      }
+    ],
+    "context_kept": [
+      {
+        "source": "https://www.insight2profit.com/the-best-and-worst-saas-pricing-models/",
+        "tokens": 47
+      },
+      {
+        "source": "https://www.linkedin.com/pulse/saas-pricing-models-strategy-2025-fariduzzaman-swadhin-tkazc",
+        "tokens": 43
+      },
+      {
+        "source": "memory:2026-04-06T18:26:27.406Z",
+        "tokens": 70
+      },
+      {
+        "source": "memory:2026-04-06T18:22:33.914Z",
+        "tokens": 46
+      },
+      {
+        "source": "memory:2026-04-06T18:23:06.190Z",
+        "tokens": 46
+      },
+      {
+        "source": "memory:2026-04-06T18:25:34.171Z",
+        "tokens": 46
+      },
+      {
+        "source": "memory:2026-04-06T18:26:23.508Z",
+        "tokens": 70
+      },
+      {
+        "source": "https://www.artisangrowthstrategies.com/blog/b2b-saas-pricing-models-complete-2025-guide",
+        "tokens": 220
+      },
+      {
+        "source": "ai_enterprise_adoption_2025.txt:0",
+        "tokens": 399
+      },
+      {
+        "source": "remote_work_policy_2025.txt:1",
+        "tokens": 293
+      },
+      {
+        "source": "ai_enterprise_adoption_2025.txt:1",
+        "tokens": 286
+      },
+      {
+        "source": "memory:2026-04-06T18:26:27.406Z",
+        "tokens": 70
+      },
+      {
+        "source": "memory:2026-04-06T18:22:33.914Z",
+        "tokens": 46
+      },
+      {
+        "source": "memory:2026-04-06T18:23:06.190Z",
+        "tokens": 46
+      },
+      {
+        "source": "memory:2026-04-06T18:25:34.171Z",
+        "tokens": 46
+      },
+      {
+        "source": "memory:2026-04-06T18:26:23.508Z",
+        "tokens": 70
+      },
+      {
+        "source": "https://railsware.com/blog/b2b-saas-pricing/",
+        "tokens": 220
+      },
+      {
+        "source": "https://bowerycap.com/blog/sales/best-product-pricing-practices-for-b2b-saas",
+        "tokens": 245
+      },
+      {
+        "source": "https://wynter.com/post/8-lessons-learned-optimizing-b2b-saas-pricing",
+        "tokens": 235
+      },
+      {
+        "source": "remote_work_policy_2025.txt:0",
+        "tokens": 399
+      },
+      {
+        "source": "https://www.forbes.com/councils/forbesbusinesscouncil/2026/02/26/the-strategies-of-value-based-pricing-in-saas/",
+        "tokens": 34
+      },
+      {
+        "source": "memory:2026-04-06T18:26:27.406Z",
+        "tokens": 70
+      },
+      {
+        "source": "memory:2026-04-06T18:22:33.914Z",
+        "tokens": 46
+      },
+      {
+        "source": "memory:2026-04-06T18:23:06.190Z",
+        "tokens": 46
+      },
+      {
+        "source": "memory:2026-04-06T18:25:34.171Z",
+        "tokens": 46
+      },
+      {
+        "source": "memory:2026-04-06T18:26:23.508Z",
+        "tokens": 70
+      },
+      {
+        "source": "https://www.omnibound.ai/blog/b2b-pricing",
+        "tokens": 211
+      },
+      {
+        "source": "https://www.getmonetizely.com/blogs/complete-guide-to-saas-pricing-models-for-2025-2026",
+        "tokens": 227
+      },
+      {
+        "source": "ai_enterprise_adoption_2025.txt:0",
+        "tokens": 399
+      },
+      {
+        "source": "ai_enterprise_adoption_2025.txt:1",
+        "tokens": 286
+      }
+    ],
+    "context_dropped": [
+      {
+        "source": "supply_chain_trends_2025.txt:0",
+        "tokens": 399,
+        "reason": "budget exceeded"
+      },
+      {
+        "source": "remote_work_policy_2025.txt:1",
+        "tokens": 293,
+        "reason": "budget exceeded"
+      },
+      {
+        "source": "remote_work_policy_2025.txt:0",
+        "tokens": 399,
+        "reason": "budget exceeded"
+      }
+    ],
+    "status": "success",
+    "error_message": null,
+    "retrieval_quality": [
+      {
+        "sub_question": "What are the most common pricing models used by B2B SaaS companies in 2025?",
+        "is_weak": false,
+        "reason": null,
+        "fresh_source_count": 6,
+        "memory_only": false,
+        "top_score": 0.29411764705882354
+      },
+      {
+        "sub_question": "How do B2B SaaS companies determine the optimal price for their products or services?",
+        "is_weak": true,
+        "reason": "Top relevance score (0.071) is below 0.15 threshold.",
+        "fresh_source_count": 4,
+        "memory_only": false,
+        "top_score": 0.07142857142857142
+      },
+      {
+        "sub_question": "What role do value metrics, customer segmentation, and competition play in shaping B2B SaaS pricing strategies?",
+        "is_weak": false,
+        "reason": null,
+        "fresh_source_count": 5,
+        "memory_only": false,
+        "top_score": 0.19230769230769232
+      }
+    ]
+  },
+  {
+    "run_id": "02f606d5-43b5-411c-bb5a-e8b4830e80ac",
+    "timestamp": "2026-04-06T22:58:45.421Z",
+    "model_used": "llama-3.3-70b-versatile",
+    "original_query": "How are SaaS companies adjusting go-to-market in response to pricing pressure?",
+    "sub_questions": [
+      "What changes are SaaS companies making to their pricing strategies in response to market pressure?",
+      "How are SaaS companies adapting their sales and marketing tactics to maintain revenue growth?",
+      "What role are data-driven insights and customer feedback playing in informing go-to-market adjustments for SaaS companies?"
+    ],
+    "final_answer": "SaaS companies are undergoing significant changes in response to market pressure, particularly in their pricing strategies [Q1]. They are shifting towards more flexible models, experimenting with personalized pricing, and increasing prices. Additionally, they are getting creative with how they raise prices, such as bundling AI features and increasing per-seat prices [Q1]. To maintain revenue growth, SaaS companies are adapting their sales and marketing tactics [Q2]. This includes centralizing sales, marketing, finance, and customer success into one cohesive unit, known as revenue operations. They are also employing various revenue models and using proven growth models like product-led growth and strategic partnerships [Q2].\n\nData-driven insights and customer feedback are playing a crucial role in informing go-to-market adjustments for SaaS companies [Q3]. Marketers are using data-driven insights to inform product development, and data-driven growth is replacing gut feeling with evidence-based insights [Q3]. This allows businesses to make decisions based on fact, not emotion or bias, and can be used to analyze customer behavior [Q3]. By leveraging data-driven insights and customer feedback, SaaS companies can make informed decisions about their pricing strategies, sales and marketing tactics, and overall growth strategy [Q1, Q2, Q3]. This enables them to stay competitive in a rapidly changing market and drive revenue growth.",
+    "sources_used": [
+      {
+        "type": "memory",
+        "label": "memory:2026-04-06T18:26:27.406Z"
+      },
+      {
+        "type": "memory",
+        "label": "memory:2026-04-06T18:22:33.914Z"
+      },
+      {
+        "type": "memory",
+        "label": "memory:2026-04-06T18:23:06.190Z"
+      },
+      {
+        "type": "memory",
+        "label": "memory:2026-04-06T18:25:34.171Z"
+      },
+      {
+        "type": "memory",
+        "label": "memory:2026-04-06T18:26:23.508Z"
+      },
+      {
+        "type": "web",
+        "label": "https://incfounders.com/news/why-saas-pricing-resets-signal-a-shift-in-startup-growth-strategies-r94ize"
+      },
+      {
+        "type": "web",
+        "label": "https://www.invespcro.com/blog/saas-pricing/"
+      },
+      {
+        "type": "web",
+        "label": "https://www.saastr.com/the-great-price-surge-of-2025-a-comprehensive-breakdown-of-pricing-increases-and-the-issues-they-have-created-for-all-of-us/"
+      },
+      {
+        "type": "doc",
+        "label": "supply_chain_trends_2025.txt:1"
+      },
+      {
+        "type": "doc",
+        "label": "ai_enterprise_adoption_2025.txt:0"
+      },
+      {
+        "type": "web",
+        "label": "https://mouseflow.com/topics/saas-marketing-strategies/"
+      },
+      {
+        "type": "memory",
+        "label": "memory:2026-04-06T18:26:21.089Z"
+      },
+      {
+        "type": "web",
+        "label": "https://www.kixie.com/sales-blog/10-steps-to-implement-a-revenue-saas-operations-strategy-in-your-saas-company/"
+      },
+      {
+        "type": "web",
+        "label": "https://www.classvipartners.com/examples-of-successful-business-growth-strategies-lessons-from-saas/"
+      },
+      {
+        "type": "doc",
+        "label": "remote_work_policy_2025.txt:1"
+      },
+      {
+        "type": "web",
+        "label": "https://almcorp.com/blog/marketing-trends-2026-data-driven-insights-industry-leaders/"
+      },
+      {
+        "type": "web",
+        "label": "https://payproglobal.com/answers/what-is-saas-data-driven-growth/"
+      },
+      {
+        "type": "memory",
+        "label": "memory:2026-04-06T22:57:23.105Z"
+      },
+      {
+        "type": "web",
+        "label": "https://www.future-processing.com/blog/data-driven-insights/"
+      }
+    ],
+    "token_usage": [
+      {
+        "sub_question": "What changes are SaaS companies making to their pricing strategies in response to market pressure?",
+        "tokens_used": 1439,
+        "tokens_dropped": 293,
+        "low_confidence": true
+      },
+      {
+        "sub_question": "How are SaaS companies adapting their sales and marketing tactics to maintain revenue growth?",
+        "tokens_used": 1466,
+        "tokens_dropped": 272,
+        "low_confidence": false
+      },
+      {
+        "sub_question": "What role are data-driven insights and customer feedback playing in informing go-to-market adjustments for SaaS companies?",
+        "tokens_used": 1330,
+        "tokens_dropped": 399,
+        "low_confidence": false
+      }
+    ],
+    "context_kept": [
+      {
+        "source": "memory:2026-04-06T18:26:27.406Z",
+        "tokens": 70
+      },
+      {
+        "source": "memory:2026-04-06T18:22:33.914Z",
+        "tokens": 46
+      },
+      {
+        "source": "memory:2026-04-06T18:23:06.190Z",
+        "tokens": 46
+      },
+      {
+        "source": "memory:2026-04-06T18:25:34.171Z",
+        "tokens": 46
+      },
+      {
+        "source": "memory:2026-04-06T18:26:23.508Z",
+        "tokens": 70
+      },
+      {
+        "source": "https://incfounders.com/news/why-saas-pricing-resets-signal-a-shift-in-startup-growth-strategies-r94ize",
+        "tokens": 44
+      },
+      {
+        "source": "https://www.invespcro.com/blog/saas-pricing/",
+        "tokens": 223
+      },
+      {
+        "source": "https://www.saastr.com/the-great-price-surge-of-2025-a-comprehensive-breakdown-of-pricing-increases-and-the-issues-they-have-created-for-all-of-us/",
+        "tokens": 223
+      },
+      {
+        "source": "supply_chain_trends_2025.txt:1",
+        "tokens": 272
+      },
+      {
+        "source": "ai_enterprise_adoption_2025.txt:0",
+        "tokens": 399
+      },
+      {
+        "source": "https://mouseflow.com/topics/saas-marketing-strategies/",
+        "tokens": 44
+      },
+      {
+        "source": "memory:2026-04-06T18:26:27.406Z",
+        "tokens": 70
+      },
+      {
+        "source": "memory:2026-04-06T18:26:23.508Z",
+        "tokens": 70
+      },
+      {
+        "source": "memory:2026-04-06T18:26:21.089Z",
+        "tokens": 59
+      },
+      {
+        "source": "memory:2026-04-06T18:22:33.914Z",
+        "tokens": 46
+      },
+      {
+        "source": "memory:2026-04-06T18:23:06.190Z",
+        "tokens": 46
+      },
+      {
+        "source": "https://www.kixie.com/sales-blog/10-steps-to-implement-a-revenue-saas-operations-strategy-in-your-saas-company/",
+        "tokens": 220
+      },
+      {
+        "source": "https://www.classvipartners.com/examples-of-successful-business-growth-strategies-lessons-from-saas/",
+        "tokens": 219
+      },
+      {
+        "source": "ai_enterprise_adoption_2025.txt:0",
+        "tokens": 399
+      },
+      {
+        "source": "remote_work_policy_2025.txt:1",
+        "tokens": 293
+      },
+      {
+        "source": "https://almcorp.com/blog/marketing-trends-2026-data-driven-insights-industry-leaders/",
+        "tokens": 32
+      },
+      {
+        "source": "https://payproglobal.com/answers/what-is-saas-data-driven-growth/",
+        "tokens": 38
+      },
+      {
+        "source": "memory:2026-04-06T18:22:33.914Z",
+        "tokens": 46
+      },
+      {
+        "source": "memory:2026-04-06T18:23:06.190Z",
+        "tokens": 46
+      },
+      {
+        "source": "memory:2026-04-06T18:25:34.171Z",
+        "tokens": 46
+      },
+      {
+        "source": "memory:2026-04-06T22:57:23.105Z",
+        "tokens": 151
+      },
+      {
+        "source": "https://www.future-processing.com/blog/data-driven-insights/",
+        "tokens": 209
+      },
+      {
+        "source": "memory:2026-04-06T18:26:23.508Z",
+        "tokens": 70
+      },
+      {
+        "source": "ai_enterprise_adoption_2025.txt:0",
+        "tokens": 399
+      },
+      {
+        "source": "remote_work_policy_2025.txt:1",
+        "tokens": 293
+      }
+    ],
+    "context_dropped": [
+      {
+        "source": "remote_work_policy_2025.txt:1",
+        "tokens": 293,
+        "reason": "budget exceeded"
+      },
+      {
+        "source": "supply_chain_trends_2025.txt:1",
+        "tokens": 272,
+        "reason": "budget exceeded"
+      },
+      {
+        "source": "supply_chain_trends_2025.txt:0",
+        "tokens": 399,
+        "reason": "budget exceeded"
+      }
+    ],
+    "status": "success",
+    "error_message": null,
+    "retrieval_quality": [
+      {
+        "sub_question": "What changes are SaaS companies making to their pricing strategies in response to market pressure?",
+        "is_weak": true,
+        "reason": "Top relevance score (0.148) is below 0.15 threshold.",
+        "fresh_source_count": 5,
+        "memory_only": false,
+        "top_score": 0.14814814814814814
+      },
+      {
+        "sub_question": "How are SaaS companies adapting their sales and marketing tactics to maintain revenue growth?",
+        "is_weak": false,
+        "reason": null,
+        "fresh_source_count": 5,
+        "memory_only": false,
+        "top_score": 0.17391304347826086
+      },
+      {
+        "sub_question": "What role are data-driven insights and customer feedback playing in informing go-to-market adjustments for SaaS companies?",
+        "is_weak": false,
+        "reason": null,
+        "fresh_source_count": 5,
+        "memory_only": false,
+        "top_score": 0.2222222222222222
+      }
+    ]
+  },
+  {
+    "run_id": "be2c912e-3efd-48d1-98f6-8039a6e1ae7e",
+    "timestamp": "2026-04-06T22:56:03.040Z",
+    "model_used": "llama-3.3-70b-versatile",
+    "original_query": "How are enterprise companies adopting AI, managing supply chain risks, and adapting remote work policies in 2025?",
+    "sub_questions": [
+      "What AI technologies and applications are being adopted by enterprise companies in 2025?",
+      "How are enterprise companies managing and mitigating supply chain risks in 2025?",
+      "What remote work policies and practices are being implemented by enterprise companies in 2025?"
+    ],
+    "final_answer": "In 2025, enterprise companies are adopting various AI technologies and applications, including Generative AI, Agentic AI, and Specialized Language Models, to manage complex operations and improve decision-making [Q1]. These technologies are being used to drive autonomous systems, multimodal AI, and intelligent automation, enabling companies to compete on customer experience through hyper-personalization [Q1]. Additionally, companies are leveraging AI for enterprise search and autonomous agents to execute multi-step workflows [Q1].\n\nTo mitigate risks, enterprise companies are implementing strategies to manage and mitigate supply chain risks, such as diversifying suppliers, nearshoring, and using digital twins to simulate disruptions [Q2]. They are also assessing supplier risks and building resilient supply chains to ensure business continuity [Q2].\n\nIn terms of remote work, companies are adopting flexible policies and practices, including flexible hours, asynchronous collaboration, and employee well-being initiatives [Q3]. They are also formalizing hybrid policies, requiring employees to be in the office a few days a week, and investing in tools and processes for distributed work, such as asynchronous video communication and digital whiteboarding [Q3]. By implementing these policies and technologies, enterprise companies are adapting to the changing business landscape and positioning themselves for success in 2025.",
+    "sources_used": [
+      {
+        "type": "web",
+        "label": "https://www.linkedin.com/pulse/top-10-enterprise-ai-trends-2025-strategic-outlook-c-suite-lionel-sim-cyogc"
+      },
+      {
+        "type": "memory",
+        "label": "memory:2026-04-06T16:27:53.941Z"
+      },
+      {
+        "type": "memory",
+        "label": "memory:2026-04-06T22:54:39.723Z"
+      },
+      {
+        "type": "memory",
+        "label": "memory:2026-04-06T16:37:52.179Z"
+      },
+      {
+        "type": "memory",
+        "label": "memory:2026-04-06T18:23:56.868Z"
+      },
+      {
+        "type": "memory",
+        "label": "memory:2026-04-06T18:23:53.868Z"
+      },
+      {
+        "type": "web",
+        "label": "https://www.uniphore.com/blog/enterprise-ai-trends-2025/"
+      },
+      {
+        "type": "web",
+        "label": "https://theitsource.asia/blog/the-top-10-applications-for-ai-in-business-a-2025-outlook/"
+      },
+      {
+        "type": "doc",
+        "label": "remote_work_policy_2025.txt:1"
+      },
+      {
+        "type": "doc",
+        "label": "ai_enterprise_adoption_2025.txt:1"
+      },
+      {
+        "type": "web",
+        "label": "https://www.linkedin.com/pulse/how-identify-assess-mitigate-emerging-risks-your-v2cwc"
+      },
+      {
+        "type": "web",
+        "label": "https://ceinterim.com/supply-chain-risk-management/"
+      },
+      {
+        "type": "web",
+        "label": "https://www.netsuite.com/portal/resource/articles/inventory-management/supply-chain-risks.shtml"
+      },
+      {
+        "type": "memory",
+        "label": "memory:2026-04-06T16:37:17.976Z"
+      },
+      {
+        "type": "memory",
+        "label": "memory:2026-04-06T16:37:32.059Z"
+      },
+      {
+        "type": "doc",
+        "label": "supply_chain_trends_2025.txt:1"
+      },
+      {
+        "type": "web",
+        "label": "https://www.mitel.com/blog/the-state-of-work-in-2024"
+      },
+      {
+        "type": "web",
+        "label": "https://www.hr.com/en/magazines/all_articles/remote-work-policies-11-fresh-approaches-for-2025_m5m6byep.html"
+      },
+      {
+        "type": "web",
+        "label": "https://losangelesit.com/the-ultimate-2025-guide-to-remote-work-best-practices/"
+      },
+      {
+        "type": "doc",
+        "label": "remote_work_policy_2025.txt:0"
+      }
+    ],
+    "token_usage": [
+      {
+        "sub_question": "What AI technologies and applications are being adopted by enterprise companies in 2025?",
+        "tokens_used": 1501,
+        "tokens_dropped": 399,
+        "low_confidence": true
+      },
+      {
+        "sub_question": "How are enterprise companies managing and mitigating supply chain risks in 2025?",
+        "tokens_used": 1412,
+        "tokens_dropped": 399,
+        "low_confidence": false
+      },
+      {
+        "sub_question": "What remote work policies and practices are being implemented by enterprise companies in 2025?",
+        "tokens_used": 1328,
+        "tokens_dropped": 399,
+        "low_confidence": false
+      }
+    ],
+    "context_kept": [
+      {
+        "source": "https://www.linkedin.com/pulse/top-10-enterprise-ai-trends-2025-strategic-outlook-c-suite-lionel-sim-cyogc",
+        "tokens": 56
+      },
+      {
+        "source": "memory:2026-04-06T16:27:53.941Z",
+        "tokens": 72
+      },
+      {
+        "source": "memory:2026-04-06T22:54:39.723Z",
+        "tokens": 120
+      },
+      {
+        "source": "memory:2026-04-06T16:37:52.179Z",
+        "tokens": 67
+      },
+      {
+        "source": "memory:2026-04-06T18:23:56.868Z",
+        "tokens": 70
+      },
+      {
+        "source": "memory:2026-04-06T18:23:53.868Z",
+        "tokens": 66
+      },
+      {
+        "source": "https://www.uniphore.com/blog/enterprise-ai-trends-2025/",
+        "tokens": 235
+      },
+      {
+        "source": "https://theitsource.asia/blog/the-top-10-applications-for-ai-in-business-a-2025-outlook/",
+        "tokens": 236
+      },
+      {
+        "source": "remote_work_policy_2025.txt:1",
+        "tokens": 293
+      },
+      {
+        "source": "ai_enterprise_adoption_2025.txt:1",
+        "tokens": 286
+      },
+      {
+        "source": "https://www.linkedin.com/pulse/how-identify-assess-mitigate-emerging-risks-your-v2cwc",
+        "tokens": 42
+      },
+      {
+        "source": "memory:2026-04-06T22:54:39.723Z",
+        "tokens": 120
+      },
+      {
+        "source": "https://ceinterim.com/supply-chain-risk-management/",
+        "tokens": 235
+      },
+      {
+        "source": "memory:2026-04-06T16:27:53.941Z",
+        "tokens": 72
+      },
+      {
+        "source": "memory:2026-04-06T16:37:52.179Z",
+        "tokens": 67
+      },
+      {
+        "source": "https://www.netsuite.com/portal/resource/articles/inventory-management/supply-chain-risks.shtml",
+        "tokens": 232
+      },
+      {
+        "source": "memory:2026-04-06T16:37:17.976Z",
+        "tokens": 39
+      },
+      {
+        "source": "memory:2026-04-06T16:37:32.059Z",
+        "tokens": 47
+      },
+      {
+        "source": "supply_chain_trends_2025.txt:1",
+        "tokens": 272
+      },
+      {
+        "source": "ai_enterprise_adoption_2025.txt:1",
+        "tokens": 286
+      },
+      {
+        "source": "https://www.mitel.com/blog/the-state-of-work-in-2024",
+        "tokens": 40
+      },
+      {
+        "source": "https://www.hr.com/en/magazines/all_articles/remote-work-policies-11-fresh-approaches-for-2025_m5m6byep.html",
+        "tokens": 36
+      },
+      {
+        "source": "memory:2026-04-06T22:54:39.723Z",
+        "tokens": 120
+      },
+      {
+        "source": "https://losangelesit.com/the-ultimate-2025-guide-to-remote-work-best-practices/",
+        "tokens": 215
+      },
+      {
+        "source": "memory:2026-04-06T16:27:53.941Z",
+        "tokens": 72
+      },
+      {
+        "source": "memory:2026-04-06T16:37:52.179Z",
+        "tokens": 67
+      },
+      {
+        "source": "memory:2026-04-06T16:37:17.976Z",
+        "tokens": 39
+      },
+      {
+        "source": "memory:2026-04-06T16:37:32.059Z",
+        "tokens": 47
+      },
+      {
+        "source": "remote_work_policy_2025.txt:1",
+        "tokens": 293
+      },
+      {
+        "source": "remote_work_policy_2025.txt:0",
+        "tokens": 399
+      }
+    ],
+    "context_dropped": [
+      {
+        "source": "ai_enterprise_adoption_2025.txt:0",
+        "tokens": 399,
+        "reason": "budget exceeded"
+      },
+      {
+        "source": "supply_chain_trends_2025.txt:0",
+        "tokens": 399,
+        "reason": "budget exceeded"
+      },
+      {
+        "source": "ai_enterprise_adoption_2025.txt:0",
+        "tokens": 399,
+        "reason": "budget exceeded"
+      }
+    ],
+    "status": "success",
+    "error_message": null,
+    "retrieval_quality": [
+      {
+        "sub_question": "What AI technologies and applications are being adopted by enterprise companies in 2025?",
+        "is_weak": true,
+        "reason": "Top relevance score (0.125) is below 0.15 threshold.",
+        "fresh_source_count": 5,
+        "memory_only": false,
+        "top_score": 0.125
+      },
+      {
+        "sub_question": "How are enterprise companies managing and mitigating supply chain risks in 2025?",
+        "is_weak": false,
+        "reason": null,
+        "fresh_source_count": 5,
+        "memory_only": false,
+        "top_score": 0.17391304347826086
+      },
+      {
+        "sub_question": "What remote work policies and practices are being implemented by enterprise companies in 2025?",
+        "is_weak": false,
+        "reason": null,
+        "fresh_source_count": 5,
+        "memory_only": false,
+        "top_score": 0.22727272727272727
+      }
+    ]
+  }
+]

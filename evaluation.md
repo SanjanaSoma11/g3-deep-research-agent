@@ -9,12 +9,14 @@ This document explains the key architectural decisions made in the G3 Deep Resea
 ## Memory Strategy: Episodic Buffer over Vector RAG
 
 ### Decision
-An episodic buffer stored as a flat JSON file was chosen over a vector store (Chroma, Qdrant, or Pinecone).
+An episodic buffer stored as a flat JSON file was chosen over a vector store (Chroma, Qdrant, or Pinecone). Memory is written at session level — one entry per successful pipeline run, not one per sub-question.
 
 ### Reasoning
 A vector store requires either a locally running service (Chroma, Qdrant) or a paid managed service (Pinecone). Both add operational complexity that is disproportionate to the scale of this prototype — the memory buffer will contain at most a few hundred entries during the assessment period. A JSON file with keyword scoring is sufficient for this scale and requires zero additional infrastructure.
 
 The episodic structure (full session summaries keyed by query) is more appropriate for this use case than chunk-level vector embeddings because: (1) the agent is answering business research questions where session-level context ("last time I researched this topic I found X") is more useful than sentence-level similarity, and (2) the summaries are already compressed by the summariser LLM, so they are dense and information-rich.
+
+Session-level writes (one entry per run) produce more coherent memory entries than per-sub-question writes, which created 2–3 shallow fragments per run. A quality gate prevents failed or low-evidence runs from writing to the buffer: a run must have `status: "success"`, at least one non-memory (web or doc) source, a non-error answer of at least 50 words, and at least one cited source per sub-question. This keeps the memory buffer free of error runs and low-quality extrapolation.
 
 ### Trade-off accepted
 Retrieval quality degrades for queries that use different vocabulary than previously stored sessions. A vector store with semantic embeddings would handle paraphrasing and synonyms better. This is an acceptable trade-off for a demo prototype.
@@ -39,7 +41,9 @@ Synonyms and paraphrasing will reduce retrieval recall. A query about "revenue g
 ### Decision
 The 2,000-token hard ceiling is split into two fixed budgets: 1,600 tokens for retrieved context (web snippets, document chunks, memory summaries) and 400 tokens reserved for prompt overhead (system instructions, sub-question text, formatting). These two budgets are strict and non-overlapping. The final synthesis call is exempt — it only receives already-compressed sub-question answers and is not subject to the per-call limit.
 
-There is no overflow summarisation step. When retrieved context exceeds 1,600 tokens, lower-ranked items are dropped entirely and recorded in the evidence log with reason "budget exceeded." This was a deliberate simplification: an overflow summarisation step would require an additional Ollama call per sub-question, adding latency and making token accounting harder to verify. Clean dropping with full logging is easier to audit and sufficient for a prototype.
+There is no overflow summarisation step. When retrieved context exceeds 1,600 tokens, lower-ranked items are dropped entirely and recorded in the evidence log with reason "budget exceeded." This was a deliberate simplification: an overflow summarisation step would require an additional LLM call per sub-question, adding latency and making token accounting harder to verify. Clean dropping with full logging is easier to audit and sufficient for a prototype.
+
+Source deduplication runs before the budget gate. Items are deduplicated by source label (URL for web, `source_filename:chunk_index` for docs, timestamp for memory) to avoid spending the context budget on repeated identical content. Only the highest-scoring copy within each duplicate group is kept.
 
 ### Reasoning
 Splitting the ceiling into a fixed context budget (1,600) and a fixed overhead reservation (400) eliminates the risk of prompt overhead eating into context space unpredictably. The 400-token overhead reservation is conservative — a typical system prompt and sub-question text uses approximately 150–250 tokens — but the extra headroom prevents hard limit violations caused by long sub-question strings.
@@ -111,3 +115,5 @@ JSON file storage has no concurrent write safety. If two workflow runs execute s
 | Groq free tier rate limits (30 req/min) | Batch runs may be throttled | Single-query demo use | Paid tier or fallback provider |
 | No concurrent write safety | File corruption risk | Single-user demo only | Database with transactions |
 | No document sanitisation beyond type/size | Prompt injection risk | Trusted user uploads only | Content sandboxing |
+| Weak retrieval fallback is heuristic-based | May misclassify edge cases | Tunable thresholds | Learned confidence model |
+| Memory quality gate uses fixed thresholds | May suppress borderline-good runs | Conservative defaults | Adaptive thresholds |

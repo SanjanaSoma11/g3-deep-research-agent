@@ -131,14 +131,17 @@ Build the evidence log writer. It must append to `output_log.json` a record cont
 {
   "run_id": "<uuid>",
   "timestamp": "<ISO8601>",
-  "model_used": "<ollama model name>",
+  "model_used": "<groq model name>",
   "original_query": "<string>",
   "sub_questions": ["<string>"],
-  "final_answer": "<string>",
+  "final_answer": "<string> | null",
   "sources_used": [{ "type": "web|doc|memory", "label": "<url or filename>" }],
-  "token_usage": [{ "sub_question": "<string>", "tokens_used": int, "tokens_dropped": int }],
+  "token_usage": [{ "sub_question": "<string>", "tokens_used": int, "tokens_dropped": int, "low_confidence": bool }],
   "context_kept": [{ "source": "<string>", "tokens": int }],
-  "context_dropped": [{ "source": "<string>", "tokens": int, "reason": "<string>" }]
+  "context_dropped": [{ "source": "<string>", "tokens": int, "reason": "<string>" }],
+  "status": "success|failed|partial",
+  "error_message": "<string> | null",
+  "retrieval_quality": "<object> | null"
 }
 ```
 

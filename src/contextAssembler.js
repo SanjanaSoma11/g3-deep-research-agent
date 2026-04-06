@@ -44,27 +44,38 @@ function formatItem(item) {
 
 /**
  * Assemble the research prompt from budget gate output and the sub-question.
- * @param {{ kept: Array, dropped: Array, kept_tokens: number, dropped_tokens: number }} budgetGateOutput
+ * @param {{ kept: Array, dropped: Array, kept_tokens: number, dropped_tokens: number, retrieval_quality?: object }} budgetGateOutput
  * @param {string} subQuestion
  * @returns {{ prompt: string, tokenCount: number }}
  */
 function assembleContext(budgetGateOutput, subQuestion) {
-  const { kept } = budgetGateOutput;
+  const { kept, retrieval_quality: retrievalQuality } = budgetGateOutput;
 
   const contextBlock = kept.length > 0
     ? kept.map(formatItem).join('\n\n')
     : '(No relevant context available.)';
 
+  // Weak-retrieval caveat injected before the question (Step 4)
+  const weakRetrievalNotice = (retrievalQuality && retrievalQuality.is_weak)
+    ? [
+        'IMPORTANT: Retrieved evidence for this question is limited. Do not extrapolate broadly.',
+        'If the available context does not directly answer the question, say so clearly and suggest',
+        'a more specific follow-up query. Prefer "insufficient evidence found" over speculation.',
+        ''
+      ].join('\n')
+    : '';
+
   const prompt = [
     'You are a research assistant. Answer the question below using only the provided context.',
     'Be concise. Cite sources by filename or URL inline.',
     '',
+    weakRetrievalNotice,
     'CONTEXT:',
     contextBlock,
     '',
     'QUESTION:',
     subQuestion
-  ].join('\n');
+  ].filter(line => line !== undefined).join('\n');
 
   const tokenCount = countTokens(prompt);
 
