@@ -31,8 +31,9 @@ This project is **Node-first**. The Node.js pipeline is the core application —
 See `ARCHITECTURE.md` for the full data flow and component descriptions.
 See `evaluation.md` for trade-off reasoning and known limitations.
 
-Visual architecture diagrams (Mermaid) are in [`docs/architecture_diagram.md`](docs/architecture_diagram.md).
-GitHub renders Mermaid natively — view the file in the browser for the visual version.
+![Architecture diagram](docs/architecture.svg)
+
+Detailed Mermaid diagrams (token budget flow, deployment topology) are in [`docs/architecture_diagram.md`](docs/architecture_diagram.md).
 
 ---
 

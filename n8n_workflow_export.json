@@ -1,5 +1,5 @@
 {
-  "name": "G3 Deep Research Agent — Trigger",
+  "name": "G3 Deep Research Agent — Orchestration",
   "nodes": [
     {
       "parameters": {},
@@ -7,7 +7,7 @@
       "name": "Manual Trigger",
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
-      "position": [240, 300]
+      "position": [240, 200]
     },
     {
       "parameters": {
@@ -21,11 +21,41 @@
         }
       },
       "id": "schedule-trigger",
-      "name": "Schedule Trigger (15 min min)",
+      "name": "Schedule Trigger",
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.1,
-      "position": [240, 480],
+      "position": [240, 420],
       "notes": "Do not schedule at an interval shorter than 15 minutes (SECURITY.md rate limiting)."
+    },
+    {
+      "parameters": {},
+      "id": "error-trigger",
+      "name": "Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [240, 640],
+      "notes": "Fires when n8n itself throws during workflow execution (e.g. HTTP timeout, node crash). Routes to Log Workflow Error so evidenceLogWriter.js records a failed entry in output_log.json."
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "query-assignment",
+              "name": "query",
+              "value": "What are the latest trends in AI infrastructure investment?",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-query",
+      "name": "Set Research Query",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [520, 300],
+      "notes": "Edit the 'query' value here to change the research question before running. This node merges both trigger paths into a single configurable entry point."
     },
     {
       "parameters": {
@@ -42,7 +72,7 @@
         },
         "sendBody": true,
         "contentType": "json",
-        "body": "={{ JSON.stringify({ query: $json.query || 'What are the latest trends in AI infrastructure investment?' }) }}",
+        "body": "={{ JSON.stringify({ query: $json.query }) }}",
         "options": {
           "timeout": 120000,
           "redirect": {
@@ -52,39 +82,173 @@
           }
         }
       },
-      "id": "http-request-pipeline",
-      "name": "POST to Node.js Pipeline",
+      "id": "post-to-pipeline",
+      "name": "POST /query — Run Pipeline",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [520, 300],
-      "notes": "Posts the research query to the Node.js pipeline. The PIPELINE_WEBHOOK_URL n8n variable should be set to the pipeline's public URL (ngrok for local dev, Render URL for hosted deployment). No credentials are hardcoded here — the pipeline authenticates to Groq and Tavily using its own environment variables."
+      "position": [800, 300],
+      "notes": "Sends the research query to the Node.js pipeline. Set PIPELINE_WEBHOOK_URL in n8n Variables to your Render URL (e.g. https://your-app.onrender.com) or ngrok tunnel for local dev. The pipeline authenticates to Groq and Tavily via its own environment variables — no credentials are stored here."
     },
     {
       "parameters": {
-        "content": "=Research pipeline result:\n\nRun ID: {{ $json.run_id }}\n\nFinal Answer:\n{{ $json.final_answer }}",
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "check-final-answer",
+              "leftValue": "={{ $json.final_answer }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
         "options": {}
       },
-      "id": "output-note",
-      "name": "Log Result",
+      "id": "check-response",
+      "name": "Check Response Status",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1080, 300],
+      "notes": "TRUE path: pipeline returned a final_answer → Format Success Output. FALSE path: pipeline returned an error or empty answer → Log Failed Response."
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "run-id",
+              "name": "run_id",
+              "value": "={{ $json.run_id }}",
+              "type": "string"
+            },
+            {
+              "id": "final-answer",
+              "name": "final_answer",
+              "value": "={{ $json.final_answer }}",
+              "type": "string"
+            },
+            {
+              "id": "status",
+              "name": "status",
+              "value": "success",
+              "type": "string"
+            },
+            {
+              "id": "completed-at",
+              "name": "completed_at",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "format-success",
+      "name": "Format Success Output",
       "type": "n8n-nodes-base.set",
-      "typeVersion": 3.3,
-      "position": [760, 300]
+      "typeVersion": 3.4,
+      "position": [1360, 160],
+      "notes": "Pipeline completed successfully. Use run_id to look up the full evidence log entry in output_log.json (includes context_kept, context_dropped, token_usage, retrieval_quality)."
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "status",
+              "name": "status",
+              "value": "failed",
+              "type": "string"
+            },
+            {
+              "id": "error-msg",
+              "name": "error_message",
+              "value": "={{ $json.error || 'Pipeline returned no final_answer' }}",
+              "type": "string"
+            },
+            {
+              "id": "failed-at",
+              "name": "failed_at",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "log-failed-response",
+      "name": "Log Failed Response",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [1360, 440],
+      "notes": "The Node.js pipeline has already written a failed entry to output_log.json with status: 'failed'. Check the Render or local process logs for the root cause."
+    },
+    {
+      "parameters": {
+        "url": "={{ $vars.PIPELINE_WEBHOOK_URL }}/query",
+        "method": "POST",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={{ JSON.stringify({ query: '__workflow_error__: ' + ($json.execution?.error?.message || 'Unknown n8n workflow error') + ' | node: ' + ($json.execution?.lastNodeExecuted || 'unknown') + ' | workflow_id: ' + $workflow.id }) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "log-workflow-error",
+      "name": "Log Workflow Error to Pipeline",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [520, 640],
+      "notes": "Posts an error-prefixed query to the pipeline so evidenceLogWriter.js writes a status: 'failed' entry to output_log.json. This satisfies the CLAUDE.md Step 15 requirement for error trigger logging."
     }
   ],
   "connections": {
     "Manual Trigger": {
       "main": [
-        [{ "node": "POST to Node.js Pipeline", "type": "main", "index": 0 }]
+        [{ "node": "Set Research Query", "type": "main", "index": 0 }]
       ]
     },
-    "Schedule Trigger (15 min min)": {
+    "Schedule Trigger": {
       "main": [
-        [{ "node": "POST to Node.js Pipeline", "type": "main", "index": 0 }]
+        [{ "node": "Set Research Query", "type": "main", "index": 0 }]
       ]
     },
-    "POST to Node.js Pipeline": {
+    "Error Trigger": {
       "main": [
-        [{ "node": "Log Result", "type": "main", "index": 0 }]
+        [{ "node": "Log Workflow Error to Pipeline", "type": "main", "index": 0 }]
+      ]
+    },
+    "Set Research Query": {
+      "main": [
+        [{ "node": "POST /query — Run Pipeline", "type": "main", "index": 0 }]
+      ]
+    },
+    "POST /query — Run Pipeline": {
+      "main": [
+        [{ "node": "Check Response Status", "type": "main", "index": 0 }]
+      ]
+    },
+    "Check Response Status": {
+      "main": [
+        [{ "node": "Format Success Output", "type": "main", "index": 0 }],
+        [{ "node": "Log Failed Response", "type": "main", "index": 0 }]
       ]
     }
   },
@@ -92,9 +256,9 @@
     "executionOrder": "v1"
   },
   "staticData": null,
-  "tags": [],
+  "tags": ["research", "ai", "groq", "tavily"],
   "meta": {
     "instanceId": "g3-deep-research-agent",
-    "notes": "Import this workflow into n8n cloud free tier. Before use: set the n8n variable PIPELINE_WEBHOOK_URL to the URL of your deployed Node.js pipeline (e.g. ngrok tunnel for local dev, or your Render service URL for hosted deployment). The Groq and Tavily API keys are managed by the Node.js pipeline via its own GROQ_API_KEY and TAVILY_API_KEY env vars — do not add them here. See README.md for full setup instructions. Error handling is performed inside the Node.js pipeline. Failed runs are written to output_log.json with status: 'failed' by evidenceLogWriter.js. n8n does not need a separate error handler."
+    "notes": "Import into n8n cloud free tier. Before running: set the n8n Variable PIPELINE_WEBHOOK_URL to your deployed pipeline URL (Render or ngrok). The Groq and Tavily API keys are managed by the Node.js pipeline via its own environment variables — do not add them here. See README.md for full setup instructions.\n\nWorkflow structure:\n  Manual Trigger ──┐\n                   ├──> Set Research Query ──> POST /query ──> Check Response ──> [TRUE]  Format Success Output\n  Schedule Trigger ─┘                                                            └──> [FALSE] Log Failed Response\n  Error Trigger ──────────────────────────────────────────────────────────────────────────> Log Workflow Error to Pipeline"
   }
 }
