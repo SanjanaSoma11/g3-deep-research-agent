@@ -4,6 +4,8 @@ A deep research agent that answers complex, multi-part business research questio
 
 Built for the Binox 2026 Take-Home Assessment — Graduate Track G3.
 
+**Live demo:** https://g3-deep-research-agent.onrender.com
+
 ---
 
 ## Important: Single-User Prototype
@@ -34,6 +36,10 @@ See `evaluation.md` for trade-off reasoning and known limitations.
 ![Architecture diagram](docs/architecture.svg)
 
 Detailed Mermaid diagrams (token budget flow, deployment topology) are in [`docs/architecture_diagram.md`](docs/architecture_diagram.md).
+
+### n8n Workflow
+
+![n8n workflow](docs/n8n_workflow.png)
 
 ---
 
@@ -235,8 +241,8 @@ If you have deployed to Render, your pipeline is already publicly accessible at 
 1. Log in to n8n cloud at app.n8n.cloud
 2. Workflows → Import → upload `n8n_workflow_export.json`
 3. In the HTTP Request node, set the URL to:
+   - Hosted: `https://g3-deep-research-agent.onrender.com/query`
    - Local: `https://<your-ngrok-id>.ngrok.io/query`
-   - Render: `https://<your-service>.onrender.com/query`
 4. Add your Tavily API key in n8n's credential manager (Settings → Credentials → New)
 5. Save and activate the workflow
 
@@ -256,6 +262,60 @@ node src/pipeline.js "How are B2B SaaS companies adjusting go-to-market strategy
 ```
 
 The second run should retrieve a summary from the first run via the episodic buffer. Check `output_log.json` — the second entry's `context_kept` array should contain an item with `type: "memory"`.
+
+---
+
+## Sample Run
+
+**Query**
+
+```
+node src/pipeline.js "What pricing strategies are B2B SaaS companies using in 2025?"
+```
+
+**Final answer** (from `run_id: 840f3eed`, `2026-04-06T22:57:23Z`)
+
+> B2B SaaS companies are adopting pricing models that align with customer needs and usage habits [Q1]. The most popular approach is the monthly subscription model, used by nearly 47% of companies, followed by tiered pricing [Q1]. To determine the optimal price for their products or services, companies consider factors such as the value their product provides to the customer, production costs, customer willingness to pay, and competitor research [Q2]. They also conduct customer interviews, create buyer personas, and analyze customer data to inform their pricing strategy [Q2].
+>
+> Value metrics, customer segmentation, and competition play significant roles in shaping B2B SaaS pricing strategies [Q3]. Segmentation allows for differentiated pricing, capturing variance in willingness-to-pay without abandoning lower-profit segments [Q3]. By considering these factors and adopting flexible pricing models, B2B SaaS companies can create pricing strategies that meet the diverse needs of their customers [Q1].
+
+**What the pipeline did** (from `output_log.json`)
+
+| Step | Detail |
+|---|---|
+| Sub-questions generated | 3 (decomposer prompt → Groq) |
+| Web sources fetched | Tavily — 8 URLs across 3 sub-questions |
+| Doc chunks retrieved | `ai_enterprise_adoption_2025.txt`, `remote_work_policy_2025.txt` |
+| Memory hits | 5 entries retrieved from prior session on same topic |
+| Tokens used (per sub-question) | 1,566 / 1,377 / 1,435 — all under 1,600 ceiling |
+| Tokens dropped (budget gate) | 0 / 692 / 399 — logged with `reason: "budget exceeded"` |
+| Status | `success` |
+
+**Evidence log snippet** (truncated)
+
+```json
+{
+  "run_id": "840f3eed-4cfe-4702-8767-3be2b0fe76ea",
+  "model_used": "llama-3.3-70b-versatile",
+  "status": "success",
+  "token_usage": [
+    { "sub_question": "What are the most common pricing models...", "tokens_used": 1566, "tokens_dropped": 0,   "low_confidence": false },
+    { "sub_question": "How do B2B SaaS companies determine...",     "tokens_used": 1377, "tokens_dropped": 692, "low_confidence": true  },
+    { "sub_question": "What role do value metrics...",              "tokens_used": 1435, "tokens_dropped": 399, "low_confidence": false }
+  ],
+  "context_dropped": [
+    { "source": "supply_chain_trends_2025.txt:0", "tokens": 399, "reason": "budget exceeded" },
+    { "source": "remote_work_policy_2025.txt:1",  "tokens": 293, "reason": "budget exceeded" }
+  ],
+  "retrieval_quality": [
+    { "sub_question": "What are the most common pricing models...", "is_weak": false, "top_score": 0.294 },
+    { "sub_question": "How do B2B SaaS companies determine...",     "is_weak": true,  "top_score": 0.071, "reason": "Top relevance score (0.071) is below 0.15 threshold." },
+    { "sub_question": "What role do value metrics...",              "is_weak": false, "top_score": 0.192 }
+  ]
+}
+```
+
+The `low_confidence: true` flag on sub-question 2 shows the retrieval quality gate working — the keyword scorer found low relevance (score 0.071) and flagged the answer rather than suppressing it. The full log is in [`sample_output_log.json`](sample_output_log.json).
 
 ---
 

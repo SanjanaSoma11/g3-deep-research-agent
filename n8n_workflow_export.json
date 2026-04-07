@@ -87,7 +87,7 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [800, 300],
-      "notes": "Sends the research query to the Node.js pipeline. Set PIPELINE_WEBHOOK_URL in n8n Variables to your Render URL (e.g. https://your-app.onrender.com) or ngrok tunnel for local dev. The pipeline authenticates to Groq and Tavily via its own environment variables — no credentials are stored here."
+      "notes": "Sends the research query to the Node.js pipeline. Set PIPELINE_WEBHOOK_URL in n8n Variables to: https://g3-deep-research-agent.onrender.com (or your own Render URL / ngrok tunnel for local dev). The pipeline authenticates to Groq and Tavily via its own environment variables — no credentials are stored here."
     },
     {
       "parameters": {
