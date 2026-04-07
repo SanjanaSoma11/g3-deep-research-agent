@@ -1,0 +1,169 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 960" width="760" height="960" font-family="Arial, sans-serif">
+
+  <!-- Background -->
+  <rect width="760" height="960" fill="#F8F9FA" rx="12"/>
+
+  <!-- Title -->
+  <text x="380" y="30" text-anchor="middle" font-size="15" font-weight="bold" fill="#1A252F">G3 Deep Research Agent — Architecture</text>
+
+  <!-- ══ User / Trigger ══ -->
+  <rect x="275" y="44" width="210" height="34" rx="8" fill="#EBF5FB" stroke="#85C1E9" stroke-width="1.5"/>
+  <text x="380" y="66" text-anchor="middle" font-size="12" fill="#1A5276">User / n8n Trigger</text>
+
+  <!-- arrow down -->
+  <line x1="380" y1="78" x2="380" y2="95" stroke="#555" stroke-width="1.5"/>
+  <polygon points="374,91 380,101 386,91" fill="#555"/>
+
+  <!-- ══ Entry ══ -->
+  <rect x="240" y="102" width="280" height="34" rx="8" fill="#D6EAF8" stroke="#2E86C1" stroke-width="1.5"/>
+  <text x="380" y="124" text-anchor="middle" font-size="12" fill="#1A5276">CLI  ·  POST /query  ·  Web UI</text>
+
+  <!-- arrow down -->
+  <line x1="380" y1="136" x2="380" y2="153" stroke="#555" stroke-width="1.5"/>
+  <polygon points="374,149 380,159 386,149" fill="#555"/>
+
+  <!-- ══ Query Decomposer ══ -->
+  <rect x="220" y="160" width="320" height="42" rx="8" fill="#FDEBD0" stroke="#E67E22" stroke-width="2"/>
+  <text x="380" y="178" text-anchor="middle" font-size="12" font-weight="bold" fill="#784212">Query Decomposer (Groq)</text>
+  <text x="380" y="194" text-anchor="middle" font-size="10" fill="#A04000">Llama 3.3 70B · max 3 sub-questions</text>
+
+  <!-- ══ Sub-question loop border ══ -->
+  <rect x="40" y="216" width="680" height="400" rx="10" fill="none" stroke="#BDC3C7" stroke-width="1.5" stroke-dasharray="7,4"/>
+  <text x="380" y="233" text-anchor="middle" font-size="11" fill="#7F8C8D" font-style="italic">Per Sub-Question Loop  ×1–3</text>
+
+  <!-- fan lines from decomposer to three sources -->
+  <!-- left: center(202) of decomposer bottom (202) -->
+  <line x1="380" y1="202" x2="165" y2="202" stroke="#555" stroke-width="1.5"/>
+  <line x1="165" y1="202" x2="165" y2="248" stroke="#555" stroke-width="1.5"/>
+  <polygon points="159,244 165,254 171,244" fill="#555"/>
+  <!-- center -->
+  <line x1="380" y1="202" x2="380" y2="248" stroke="#555" stroke-width="1.5"/>
+  <polygon points="374,244 380,254 386,244" fill="#555"/>
+  <!-- right -->
+  <line x1="380" y1="202" x2="595" y2="202" stroke="#555" stroke-width="1.5"/>
+  <line x1="595" y1="202" x2="595" y2="248" stroke="#555" stroke-width="1.5"/>
+  <polygon points="589,244 595,254 601,244" fill="#555"/>
+
+  <!-- ══ Sources row ══ -->
+  <!-- Tavily -->
+  <rect x="64" y="254" width="202" height="40" rx="8" fill="#F5EEF8" stroke="#8E44AD" stroke-width="1.5"/>
+  <text x="165" y="272" text-anchor="middle" font-size="12" font-weight="bold" fill="#6C3483">Tavily Web Search</text>
+  <text x="165" y="287" text-anchor="middle" font-size="10" fill="#7D3C98">top 3 results</text>
+
+  <!-- Doc Chunks -->
+  <rect x="279" y="254" width="202" height="40" rx="8" fill="#E9F7EF" stroke="#1E8449" stroke-width="1.5"/>
+  <text x="380" y="272" text-anchor="middle" font-size="12" font-weight="bold" fill="#1E8449">Doc Chunks</text>
+  <text x="380" y="287" text-anchor="middle" font-size="10" fill="#148F77">keyword top 3 · chunks_index.json</text>
+
+  <!-- Episodic Memory -->
+  <rect x="494" y="254" width="202" height="40" rx="8" fill="#E9F7EF" stroke="#1E8449" stroke-width="1.5"/>
+  <text x="595" y="272" text-anchor="middle" font-size="12" font-weight="bold" fill="#1E8449">Episodic Memory</text>
+  <text x="595" y="287" text-anchor="middle" font-size="10" fill="#148F77">top 5 · memory_buffer.json</text>
+
+  <!-- converge to budget gate -->
+  <line x1="165" y1="294" x2="165" y2="322" stroke="#555" stroke-width="1.5"/>
+  <line x1="165" y1="322" x2="374" y2="322" stroke="#555" stroke-width="1.5"/>
+  <line x1="380" y1="294" x2="380" y2="322" stroke="#555" stroke-width="1.5"/>
+  <line x1="595" y1="294" x2="595" y2="322" stroke="#555" stroke-width="1.5"/>
+  <line x1="595" y1="322" x2="386" y2="322" stroke="#555" stroke-width="1.5"/>
+  <line x1="380" y1="322" x2="380" y2="337" stroke="#555" stroke-width="1.5"/>
+  <polygon points="374,333 380,343 386,333" fill="#555"/>
+
+  <!-- ══ Token Budget Gate ══ -->
+  <rect x="210" y="344" width="340" height="42" rx="8" fill="#D6EAF8" stroke="#1A5276" stroke-width="2"/>
+  <text x="380" y="363" text-anchor="middle" font-size="12" font-weight="bold" fill="#1A5276">Token Budget Gate</text>
+  <text x="380" y="378" text-anchor="middle" font-size="10" fill="#2471A3">score · rank · keep ≤ 1,600 tokens · log dropped</text>
+
+  <line x1="380" y1="386" x2="380" y2="401" stroke="#555" stroke-width="1.5"/>
+  <polygon points="374,397 380,407 386,397" fill="#555"/>
+
+  <!-- ══ Context Assembler ══ -->
+  <rect x="210" y="408" width="340" height="38" rx="8" fill="#D6EAF8" stroke="#1A5276" stroke-width="1.5"/>
+  <text x="380" y="426" text-anchor="middle" font-size="12" font-weight="bold" fill="#1A5276">Context Assembler</text>
+  <text x="380" y="441" text-anchor="middle" font-size="10" fill="#2471A3">verify total prompt ≤ 2,000 tokens</text>
+
+  <line x1="380" y1="446" x2="380" y2="461" stroke="#555" stroke-width="1.5"/>
+  <polygon points="374,457 380,467 386,457" fill="#555"/>
+
+  <!-- ══ Research LLM ══ -->
+  <rect x="210" y="468" width="340" height="40" rx="8" fill="#FDEBD0" stroke="#E67E22" stroke-width="1.5"/>
+  <text x="380" y="486" text-anchor="middle" font-size="12" font-weight="bold" fill="#784212">Research LLM Call</text>
+  <text x="380" y="501" text-anchor="middle" font-size="10" fill="#A04000">Groq · Llama 3.3 70B · max_tokens 512</text>
+
+  <line x1="380" y1="508" x2="380" y2="523" stroke="#555" stroke-width="1.5"/>
+  <polygon points="374,519 380,529 386,519" fill="#555"/>
+
+  <!-- ══ Summariser ══ -->
+  <rect x="210" y="530" width="340" height="38" rx="8" fill="#FDEBD0" stroke="#E67E22" stroke-width="1.5"/>
+  <text x="380" y="548" text-anchor="middle" font-size="12" font-weight="bold" fill="#784212">Summariser</text>
+  <text x="380" y="563" text-anchor="middle" font-size="10" fill="#A04000">Groq · compress to ≤ 150 token JSON summary</text>
+
+  <!-- exit loop -->
+  <line x1="380" y1="568" x2="380" y2="630" stroke="#555" stroke-width="1.5"/>
+  <polygon points="374,626 380,636 386,626" fill="#555"/>
+
+  <!-- ══ Final Synthesiser ══ -->
+  <rect x="210" y="637" width="340" height="42" rx="8" fill="#FDEBD0" stroke="#E67E22" stroke-width="2"/>
+  <text x="380" y="656" text-anchor="middle" font-size="12" font-weight="bold" fill="#784212">Final Synthesiser</text>
+  <text x="380" y="671" text-anchor="middle" font-size="10" fill="#A04000">Groq · single coherent answer · ≤ 400 tokens</text>
+
+  <line x1="380" y1="679" x2="380" y2="698" stroke="#555" stroke-width="1.5"/>
+  <polygon points="374,694 380,704 386,694" fill="#555"/>
+
+  <!-- ══ Quality Gate diamond  center (380,730) ══ -->
+  <polygon points="380,704 460,730 380,756 300,730" fill="#FEF9E7" stroke="#F39C12" stroke-width="2"/>
+  <text x="380" y="726" text-anchor="middle" font-size="11" font-weight="bold" fill="#7D6608">Quality</text>
+  <text x="380" y="742" text-anchor="middle" font-size="11" font-weight="bold" fill="#7D6608">Gate</text>
+
+  <!-- YES branch: left → Memory Write -->
+  <line x1="300" y1="730" x2="192" y2="730" stroke="#27AE60" stroke-width="1.5"/>
+  <line x1="192" y1="730" x2="192" y2="768" stroke="#27AE60" stroke-width="1.5"/>
+  <polygon points="186,764 192,774 198,764" fill="#27AE60"/>
+  <text x="246" y="722" text-anchor="middle" font-size="10" font-weight="bold" fill="#27AE60">yes</text>
+
+  <!-- NO branch: right → Evidence Log (skip memory) -->
+  <line x1="460" y1="730" x2="572" y2="730" stroke="#E74C3C" stroke-width="1.5"/>
+  <line x1="572" y1="730" x2="572" y2="768" stroke="#E74C3C" stroke-width="1.5"/>
+  <polygon points="566,764 572,774 578,764" fill="#E74C3C"/>
+  <text x="518" y="722" text-anchor="middle" font-size="10" font-weight="bold" fill="#E74C3C">skip</text>
+
+  <!-- ══ Memory Write ══ -->
+  <rect x="88" y="775" width="208" height="38" rx="8" fill="#E9F7EF" stroke="#1E8449" stroke-width="1.5"/>
+  <text x="192" y="793" text-anchor="middle" font-size="12" font-weight="bold" fill="#1E8449">Write to Memory</text>
+  <text x="192" y="808" text-anchor="middle" font-size="10" fill="#148F77">memory_buffer.json</text>
+
+  <!-- ══ Evidence Log ══ -->
+  <rect x="468" y="775" width="208" height="38" rx="8" fill="#D6EAF8" stroke="#1A5276" stroke-width="1.5"/>
+  <text x="572" y="793" text-anchor="middle" font-size="12" font-weight="bold" fill="#1A5276">Evidence Log Writer</text>
+  <text x="572" y="808" text-anchor="middle" font-size="10" fill="#2471A3">output_log.json</text>
+
+  <!-- Memory Write → Evidence Log (horizontal) -->
+  <line x1="296" y1="794" x2="466" y2="794" stroke="#555" stroke-width="1.5"/>
+  <polygon points="462,788 472,794 462,800" fill="#555"/>
+
+  <!-- Evidence Log → Final Answer -->
+  <line x1="572" y1="813" x2="572" y2="848" stroke="#555" stroke-width="1.5"/>
+  <line x1="572" y1="848" x2="386" y2="848" stroke="#555" stroke-width="1.5"/>
+  <line x1="380" y1="848" x2="380" y2="861" stroke="#555" stroke-width="1.5"/>
+  <polygon points="374,857 380,867 386,857" fill="#555"/>
+
+  <!-- ══ Final Answer ══ -->
+  <rect x="250" y="868" width="260" height="40" rx="8" fill="#1E8449" stroke="#145A32" stroke-width="2"/>
+  <text x="380" y="886" text-anchor="middle" font-size="13" font-weight="bold" fill="white">Final Answer + run_id</text>
+  <text x="380" y="901" text-anchor="middle" font-size="10" fill="#A9DFBF">full evidence in output_log.json</text>
+
+  <!-- ══ Legend ══ -->
+  <rect x="40" y="924" width="680" height="26" rx="6" fill="#F2F3F4" stroke="#D5D8DC" stroke-width="1"/>
+  <rect x="54"  y="931" width="12" height="10" rx="2" fill="#FDEBD0" stroke="#E67E22" stroke-width="1"/>
+  <text x="72"  y="940" font-size="10" fill="#555">LLM call (Groq)</text>
+  <rect x="168" y="931" width="12" height="10" rx="2" fill="#E9F7EF" stroke="#1E8449" stroke-width="1"/>
+  <text x="186" y="940" font-size="10" fill="#555">Storage</text>
+  <rect x="248" y="931" width="12" height="10" rx="2" fill="#F5EEF8" stroke="#8E44AD" stroke-width="1"/>
+  <text x="266" y="940" font-size="10" fill="#555">External API</text>
+  <rect x="362" y="931" width="12" height="10" rx="2" fill="#D6EAF8" stroke="#1A5276" stroke-width="1"/>
+  <text x="380" y="940" font-size="10" fill="#555">Pipeline logic</text>
+  <rect x="466" y="931" width="12" height="10" rx="2" fill="#FEF9E7" stroke="#F39C12" stroke-width="1"/>
+  <text x="484" y="940" font-size="10" fill="#555">Decision</text>
+  <rect x="548" y="931" width="12" height="10" rx="2" fill="#EBF5FB" stroke="#85C1E9" stroke-width="1"/>
+  <text x="566" y="940" font-size="10" fill="#555">Input / Output</text>
+</svg>

@@ -19,6 +19,9 @@ output_log.json
 # User-uploaded local corpus files
 docs/*
 !docs/.gitkeep
+!docs/*.svg
+!docs/*.png
+!docs/*.md
 
 # Logs
 *.log
