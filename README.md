@@ -12,13 +12,31 @@ Built for the Binox 2026 Take-Home Assessment — Graduate Track G3.
 
 **This is a single-user prototype. It is not designed for concurrent use or production deployment.**
 
-LLM inference runs on Groq's free hosted API — no local GPU, no Ollama, no ngrok tunnel required. The only external dependencies are a Groq API key and a Tavily API key, both available free with no credit card.
+LLM inference runs on Groq's free hosted API — no local GPU, no Ollama, no ngrok tunnel required for core usage. The only external dependencies are a Groq API key and a Tavily API key, both available free with no credit card.
+
+---
+
+## Quick Start
+
+For evaluators who want to run the pipeline immediately:
+
+```bash
+git clone https://github.com/SanjanaSoma11/g3-deep-research-agent.git
+cd g3-deep-research-agent
+npm install
+cp .env.example .env
+# Edit .env: set GROQ_API_KEY and TAVILY_API_KEY
+node smoke_test.js                                   # verify setup
+node src/pipeline.js "Your research question here"   # run a query
+```
+
+That is the complete core workflow. Everything below covers the web interface, optional document indexing, Render deployment, and n8n scheduling.
 
 ---
 
 ## Architecture Summary
 
-This project is **Node-first**. The Node.js pipeline is the core application — it handles all API calls, memory management, token budgeting, and file I/O. n8n cloud is used only as a scheduler and manual trigger, sending a single HTTP POST to the Node.js endpoint.
+This project is **Node-first**. The Node.js pipeline is the core application — it handles all API calls, memory management, token budgeting, and file I/O. n8n cloud is used only as an optional scheduler and manual trigger, sending a single HTTP POST to the Node.js endpoint.
 
 - **Core pipeline**: Node.js
 - **LLM inference**: Groq API (free tier — Llama 3.3 70B)
@@ -87,12 +105,21 @@ See `self_assessment.md` for a full rubric-aligned self-evaluation.
 
 ## Prerequisites
 
-| Dependency | Version | Notes |
-|---|---|---|
-| Node.js | 18+ | Core runtime |
-| Groq API key | — | Free at https://console.groq.com — no credit card required |
-| Tavily API key | — | Free tier at tavily.com — 1,000 queries/month |
-| n8n cloud account | Free tier | Optional — only needed for scheduling |
+### Required
+
+| Dependency | Notes |
+|---|---|
+| Node.js 18+ | Core runtime |
+| Groq API key | Free at https://console.groq.com — no credit card required |
+| Tavily API key | Free tier at https://tavily.com — 1,000 queries/month |
+
+### Optional
+
+| Dependency | When you need it |
+|---|---|
+| n8n cloud account (free tier) | Only if you want scheduled or triggered runs via n8n |
+| Render account (free tier) | Only if you want a publicly hosted URL |
+| ngrok | Only if you are using n8n Cloud to call a server running on your local machine |
 
 ---
 
@@ -101,11 +128,9 @@ See `self_assessment.md` for a full rubric-aligned self-evaluation.
 ### Step 1 — Clone the repository
 
 ```bash
-git clone https://github.com/<your-github-username>/g3-deep-research-agent.git
+git clone https://github.com/SanjanaSoma11/g3-deep-research-agent.git
 cd g3-deep-research-agent
 ```
-
-> **Before submitting:** replace `<your-github-username>` with your actual GitHub username and confirm the repository name matches.
 
 ### Step 2 — Install dependencies
 
@@ -131,6 +156,8 @@ OUTPUT_LOG_PATH=./output_log.json
 PORT=3000
 ```
 
+`PORT=3000` is the local default. When deployed to Render, Render injects its own `PORT` value automatically — you do not need to set it there.
+
 ### Step 4 — Get a Groq API key
 
 1. Sign up at https://console.groq.com (free, no credit card required).
@@ -143,7 +170,9 @@ Verify the key works:
 curl https://api.groq.com/openai/v1/models -H "Authorization: Bearer $GROQ_API_KEY"
 ```
 
-### Step 5 — Add documents to the knowledge base (optional)
+### Step 5 — Add documents to the knowledge base (optional, local)
+
+This step is optional. If skipped, the agent uses web search and memory only.
 
 Place any `.pdf` or `.txt` files you want the agent to search into the `/docs` directory:
 
@@ -157,11 +186,11 @@ Run the document chunker to index them:
 node src/chunker.js
 ```
 
-This creates `chunks_index.json`. Re-run whenever you add or remove documents. If `/docs` is empty the agent still works — it will rely on web search and memory only.
+This creates `chunks_index.json`. Re-run whenever you add or remove documents.
 
 ### Step 6 — Run the smoke test
 
-Verify everything is connected before running a real query:
+Verify all connections before running a real query:
 
 ```bash
 node smoke_test.js
@@ -185,7 +214,7 @@ node tests/unit.js
 
 Tests cover token counting, keyword scoring, deduplication, budget gate logic, and memory quality gate.
 
-### Step 7 — Run a query (command line — no n8n needed)
+### Step 7 — Run a query (local CLI)
 
 ```bash
 node src/pipeline.js "What are the biggest challenges facing D2C consumer brands in 2025 and how are leading brands responding?"
@@ -193,62 +222,107 @@ node src/pipeline.js "What are the biggest challenges facing D2C consumer brands
 
 The final answer is printed to stdout. The full evidence record is appended to `output_log.json`.
 
-### Step 8 — Run a query via HTTP
+### Step 8 — Run a query via HTTP (local web server)
 
-**Option A — with the explicit server flag:**
+Start the server:
 
-    node src/pipeline.js --server
-
-**Option B — no arguments also starts the server** (this is what Render uses):
-
-    node src/pipeline.js
+```bash
+node src/pipeline.js
+```
 
 Send a query:
 
-    curl -X POST http://localhost:3000/query \
-      -H "Content-Type: application/json" \
-      -d '{"query": "What are the biggest challenges facing D2C consumer brands in 2025?"}'
+```bash
+curl -X POST http://localhost:3000/query \
+  -H "Content-Type: application/json" \
+  -d '{"query": "What are the biggest challenges facing D2C consumer brands in 2025?"}'
+```
 
-### Step 8b — Open the web interface
+### Step 8b — Open the web interface (local)
 
-With the server running (`node src/pipeline.js`), open your browser to:
+With the server running, open your browser to:
 
-    http://localhost:3000
+```
+http://localhost:3000
+```
 
-The web interface lets you submit queries, view results, and browse past runs.
-This is the same server that handles API requests — no additional setup needed.
+The web interface lets you submit queries, view results, and browse past runs. No additional setup is needed — the same server handles both API requests and the web UI.
 
-### Step 9 — Connect n8n cloud (optional, for scheduling only)
+---
 
-This step is only needed if you want n8n to trigger the pipeline on a schedule. Manual queries work without n8n.
+## Deployment (Render — Free Tier, Optional)
 
-**Choose your setup:**
+Deploy to Render if you want a publicly accessible URL. Since LLM inference runs on Groq's hosted API, no GPU or high-RAM instance is required.
 
-#### Option A — Running locally (ngrok required)
+### Prerequisites
+- A Render account (free at https://render.com)
+- Your Groq and Tavily API keys
 
-n8n cloud cannot reach your local machine. Run ngrok to expose the pipeline:
+### Deploy steps
+1. Push this repo to GitHub.
+2. Log in to Render → New → Web Service → Connect your GitHub repo.
+3. Render auto-detects `render.yaml` and configures the service.
+4. Set environment variables in Render's dashboard:
+   - `GROQ_API_KEY` — your Groq API key
+   - `LLM_MODEL` — model name (default: `llama-3.3-70b-versatile`)
+   - `TAVILY_API_KEY` — your Tavily API key
+5. Deploy. The web interface will be available at `https://<your-service>.onrender.com`.
 
-    ngrok http 3000
+You do not need to set `PORT` — Render injects it automatically.
 
-Copy the HTTPS forwarding URL (e.g. `https://abc123.ngrok.io`). Use this as the target URL in Step 9b below.
+### Limitations on Render free tier
+- Free tier services spin down after 15 minutes of inactivity. First request after spin-down takes ~30 seconds to cold-start.
+- Free tier has 512MB RAM. The Node.js pipeline itself is lightweight, but keep document uploads small.
+- `output_log.json` and `memory_buffer.json` are stored on Render's ephemeral filesystem — they reset on every deploy or restart. This is acceptable for a demo.
+- Groq free tier rate limits (30 req/min) may throttle batch runs.
 
-#### Option B — Running on Render (no ngrok needed)
+---
 
-If you have deployed to Render, your pipeline is already publicly accessible at `https://<your-service>.onrender.com`. Skip ngrok entirely and use your Render URL in Step 9b.
+## n8n Cloud Integration (Optional — Scheduling and Triggers Only)
 
-#### Step 9b — Import the n8n workflow
+n8n is not required for core pipeline operation. Use it only if you want scheduled or manually triggered runs from n8n cloud.
+
+### When ngrok is required
+
+ngrok is only needed in one specific scenario: **n8n Cloud + local server**. n8n Cloud is a hosted service and cannot reach a server running on your local machine. ngrok creates a public tunnel to your local port so n8n can reach it.
+
+If you are running the pipeline on Render, ngrok is not needed — your Render URL is already publicly accessible.
+
+### Setup
+
+#### Option A — Local server + n8n Cloud (ngrok required)
+
+Start the local server:
+
+```bash
+node src/pipeline.js
+```
+
+In a separate terminal, expose it via ngrok:
+
+```bash
+ngrok http 3000
+```
+
+Copy the HTTPS forwarding URL (e.g. `https://abc123.ngrok.io`). Use this as the target URL when configuring the n8n HTTP Request node.
+
+#### Option B — Render deployment + n8n Cloud (no ngrok)
+
+Your pipeline is already publicly accessible. Use `https://<your-service>.onrender.com` as the target URL in n8n.
+
+### Import the workflow
 
 1. Log in to n8n cloud at app.n8n.cloud
 2. Workflows → Import → upload `n8n_workflow_export.json`
-3. In the HTTP Request node, set the URL to:
-   - Hosted: `https://g3-deep-research-agent.onrender.com/query`
-   - Local: `https://<your-ngrok-id>.ngrok.io/query`
+3. In the HTTP Request node, set the URL to your pipeline's `/query` endpoint:
+   - Render: `https://<your-service>.onrender.com/query`
+   - Local via ngrok: `https://<your-ngrok-id>.ngrok.io/query`
 4. Add your Tavily API key in n8n's credential manager (Settings → Credentials → New)
 5. Save and activate the workflow
 
-> **Note:** The n8n workflow POSTs to `/query` and does nothing else. All pipeline logic runs in Node.js — n8n is a thin trigger only.
+> **Note:** The n8n workflow does one thing — POST a query to `/query`. All pipeline logic runs in Node.js. n8n is a thin trigger only.
 
-> **If the pipeline fails:** check `output_log.json` for the failed run entry — the pipeline logs all failures internally.
+> **If a run fails:** check `output_log.json`. Every failed run is logged with `status: "failed"` and an `error_message`.
 
 ---
 
@@ -364,12 +438,12 @@ The `low_confidence: true` flag on sub-question 2 shows the retrieval quality ga
 | Variable | Default | Required |
 |---|---|---|
 | `GROQ_API_KEY` | — | Yes |
-| `LLM_MODEL` | `llama-3.3-70b-versatile` | No |
 | `TAVILY_API_KEY` | — | Yes |
+| `LLM_MODEL` | `llama-3.3-70b-versatile` | No |
 | `DOCS_DIR` | `./docs` | No |
 | `MEMORY_BUFFER_PATH` | `./memory_buffer.json` | No |
 | `OUTPUT_LOG_PATH` | `./output_log.json` | No |
-| `PORT` | `3000` | No |
+| `PORT` | `3000` (local) / set by Render | No |
 
 ---
 
@@ -392,31 +466,3 @@ The `low_confidence: true` flag on sub-question 2 shows the retrieval quality ga
 - Memory buffer grows without pruning in v1. Reset by clearing `memory_buffer.json` to `[]`.
 
 Full trade-off discussion in `evaluation.md`.
-
----
-
-## Deployment (Render — Free Tier)
-
-This app can be deployed to Render's free tier directly from the GitHub repo. Since the LLM runs on Groq's hosted API (not locally), no GPU or high-RAM server is needed.
-
-### Prerequisites
-- A Render account (free at https://render.com)
-- A Groq API key (free at https://console.groq.com)
-- A Tavily API key (free at https://tavily.com)
-
-### Deploy steps
-1. Push this repo to GitHub.
-2. Log in to Render → New → Web Service → Connect your GitHub repo.
-3. Render auto-detects `render.yaml` and configures the service.
-4. Set environment variables in Render's dashboard:
-   - `GROQ_API_KEY` — your Groq API key
-   - `LLM_MODEL` — model name (default: `llama-3.3-70b-versatile`)
-   - `TAVILY_API_KEY` — your Tavily API key
-5. Deploy. The web interface will be available at `https://<your-service>.onrender.com`.
-
-### Limitations on Render free tier
-- Free tier services spin down after 15 minutes of inactivity. First request after spin-down takes ~30 seconds to cold-start.
-- Free tier has 512MB RAM. The Node.js pipeline itself is lightweight, but keep document uploads small.
-- `output_log.json` and `memory_buffer.json` are stored on Render's ephemeral filesystem — they reset on every deploy or restart. This is acceptable for a demo.
-- Groq free tier rate limits (30 req/min) may throttle batch runs.
-
